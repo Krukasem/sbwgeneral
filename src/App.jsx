@@ -124,8 +124,12 @@ export default function App() {
       <div className={`fixed inset-0 z-20 bg-slate-900/40 backdrop-blur-sm transition-opacity lg:hidden print:hidden ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsMobileMenuOpen(false)}></div>
       
       <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transform transition-transform duration-300 ease-out lg:translate-x-0 flex flex-col print:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 flex items-center justify-center border-b border-slate-100">
-          <img src="https://img2.pic.in.th/SBW.png" alt="SBW Logo" className="h-14 w-auto hover:scale-105 transition-transform duration-300" />
+        <div className="p-6 flex flex-col items-center justify-center border-b border-slate-100 text-center gap-3">
+          <img src="https://img2.pic.in.th/SBW.png" alt="SBW Logo" className="h-16 w-auto hover:scale-105 transition-transform duration-300" />
+          <div>
+            <h1 className="font-black text-lg text-slate-800 tracking-tight">SBW General Portal</h1>
+            <p className="text-[11px] font-bold text-slate-500 mt-0.5">ฝ่ายบริหารทั่วไป โรงเรียนสระบุรีวิทยาคม</p>
+          </div>
         </div>
         <div className="p-5 flex flex-col gap-2 flex-1 overflow-y-auto hide-scrollbar">
           <NavItem icon={<LayoutDashboard />} label="ภาพรวมระบบ" active={activeTab === 'dashboard'} onClick={() => navigate('dashboard')} />
@@ -171,8 +175,11 @@ export default function App() {
         {/* Top Header (Mobile mainly) */}
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 flex items-center justify-between lg:hidden shadow-sm print:hidden sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <img src="https://img2.pic.in.th/SBW.png" alt="SBW Logo" className="h-9 w-auto drop-shadow-sm" />
-            <span className="font-bold text-slate-800 tracking-tight">SBW Portal</span>
+            <img src="https://img2.pic.in.th/SBW.png" alt="SBW Logo" className="h-10 w-auto drop-shadow-sm" />
+            <div className="flex flex-col">
+              <span className="font-black text-slate-800 tracking-tight leading-none">SBW General Portal</span>
+              <span className="text-[10px] font-bold text-slate-500 mt-0.5">ฝ่ายบริหารทั่วไป โรงเรียนสระบุรีวิทยาคม</span>
+            </div>
           </div>
           <button onClick={() => setIsMobileMenuOpen(true)} className="p-2.5 bg-slate-100 rounded-xl text-slate-600 hover:bg-slate-200 active:scale-95 transition-all">
             <Menu size={22} />
@@ -504,10 +511,27 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
               
               <div>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">รูปภาพประกอบ</h4>
-                {selectedTicket.image ? (
-                  <div className="rounded-3xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50 p-2">
-                    <img src={selectedTicket.image} alt="Ticket attachment" className="w-full h-auto max-h-80 object-contain rounded-2xl" />
-                  </div>
+                {selectedTicket.image && selectedTicket.image !== 'Error uploading image' ? (
+                  <a 
+                    href={selectedTicket.image} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="block rounded-3xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50 p-2 hover:opacity-90 transition-all cursor-pointer"
+                    title="คลิกเพื่อดูรูปภาพขนาดเต็ม"
+                  >
+                    <img 
+                      src={selectedTicket.image.includes('drive.google.com') 
+                        ? `https://drive.google.com/thumbnail?id=${selectedTicket.image.match(/\/d\/(.+?)\//)?.[1]}&sz=w1000` 
+                        : selectedTicket.image} 
+                      alt="Ticket attachment" 
+                      className="w-full h-auto max-h-80 object-contain rounded-2xl bg-white" 
+                      onError={(e) => { 
+                         e.target.onerror = null; 
+                         // หากดึง Thumbnail ไม่ได้ ให้แสดงภาพ placeholder แจ้งเตือน
+                         e.target.src = 'https://placehold.co/600x400/f8fafc/64748b?text=Preview+Unavailable\\nClick+to+view+full+image'; 
+                      }}
+                    />
+                  </a>
                 ) : (
                   <div className="w-full h-64 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400">
                     <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
@@ -559,7 +583,7 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
                     <td className="p-6 cursor-pointer" onClick={() => viewDetails(t)}>
                       <div className="font-bold text-slate-800 text-lg flex items-center gap-3 group-hover:text-indigo-600 transition-colors">
                         {t.title} 
-                        {t.image && <span className="bg-indigo-50 p-1.5 rounded-lg text-indigo-500"><ImageIcon size={14} title="มีรูปภาพแนบ" /></span>}
+                        {t.image && t.image !== 'Error uploading image' && <span className="bg-indigo-50 p-1.5 rounded-lg text-indigo-500"><ImageIcon size={14} title="มีรูปภาพแนบ" /></span>}
                       </div>
                       <div className="text-sm font-medium text-slate-500 mt-2 flex items-center gap-2">
                         <CalendarDays size={14}/> {new Date(t.createdAt).toLocaleDateString('th-TH')}
