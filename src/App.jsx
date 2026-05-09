@@ -89,10 +89,11 @@ export default function App() {
     fetch(`${SCRIPT_URL}?action=getAll`)
       .then(res => res.json())
       .then(data => {
-        if(data.tickets) setTickets(data.tickets);
-        if(data.roomBookings) setRoomBookings(data.roomBookings);
-        if(data.carBookings) setCarBookings(data.carBookings);
-        if(data.foodOrders) setFoodOrders(data.foodOrders);
+        // .reverse() เพื่อให้ข้อมูลล่าสุดที่ถูกบันทึกมาอยู่ด้านบนสุดเสมอ
+        if(data.tickets) setTickets(data.tickets.reverse());
+        if(data.roomBookings) setRoomBookings(data.roomBookings.reverse());
+        if(data.carBookings) setCarBookings(data.carBookings.reverse());
+        if(data.foodOrders) setFoodOrders(data.foodOrders.reverse());
         if(data.foodCategories && data.foodCategories.length > 0) setFoodCategories(data.foodCategories);
         if(data.foods && data.foods.length > 0) setFoods(data.foods);
         if(data.admins && data.admins.length > 0) setAdmins(data.admins);
@@ -629,7 +630,7 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
 
       {view === 'list' && (
         <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
-          <div className="overflow-x-auto hide-scrollbar">
+          <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
@@ -822,38 +823,40 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
 
       {view === 'my_bookings' && (
         <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-             <thead>
-                <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
-                  <th className="p-6 font-bold uppercase tracking-wider">หัวข้อ / ห้อง</th>
-                  <th className="p-6 font-bold uppercase tracking-wider">เวลา</th>
-                  <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100/80">
-                {roomBookings.map(b => {
-                  const room = rooms.find(r => r.id === b.roomId);
-                  return (
-                  <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-6">
-                      <div className="font-bold text-slate-800 text-lg mb-1">{b.title}</div>
-                      <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                         <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-lg">{room?.name}</span> 
-                         <span className="text-slate-300">•</span> ผู้จอง: {b.requesterName}
-                      </div>
-                    </td>
-                    <td className="p-6">
-                      <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
-                      <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
-                    </td>
-                    <td className="p-6"><StatusBadge status={b.status} type="booking" /></td>
+          <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full text-left border-collapse min-w-[800px]">
+               <thead>
+                  <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
+                    <th className="p-6 font-bold uppercase tracking-wider">หัวข้อ / ห้อง</th>
+                    <th className="p-6 font-bold uppercase tracking-wider">เวลา</th>
+                    <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
                   </tr>
-                )})}
-                {roomBookings.length === 0 && (
-                  <tr><td colSpan="3" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการจอง</td></tr>
-                )}
-              </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100/80">
+                  {roomBookings.map(b => {
+                    const room = rooms.find(r => r.id === b.roomId);
+                    return (
+                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="p-6">
+                        <div className="font-bold text-slate-800 text-lg mb-1">{b.title}</div>
+                        <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                           <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-lg">{room?.name}</span> 
+                           <span className="text-slate-300">•</span> ผู้จอง: {b.requesterName}
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
+                        <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
+                      </td>
+                      <td className="p-6"><StatusBadge status={b.status} type="booking" /></td>
+                    </tr>
+                  )})}
+                  {roomBookings.length === 0 && (
+                    <tr><td colSpan="3" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการจอง</td></tr>
+                  )}
+                </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -1058,50 +1061,52 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
 
       {view === 'my_orders' && (
         <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-             <thead>
-                <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
-                  <th className="p-6 font-bold uppercase tracking-wider w-1/3">รายการอาหาร</th>
-                  <th className="p-6 font-bold uppercase tracking-wider">จัดส่งที่</th>
-                  <th className="p-6 font-bold uppercase tracking-wider text-center">ราคารวม</th>
-                  <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100/80">
-                {foodOrders.filter(b => user.role === 'admin' || b.createdBy === user.id || b.createdBy === 'guest').map(b => {
-                  let parsedItems = [];
-                  try { parsedItems = JSON.parse(b.itemsString); } catch(e){}
-                  return (
-                  <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-6">
-                      <div className="font-bold text-slate-800 text-base mb-2 space-y-1">
-                         {parsedItems.map((item, idx) => (
-                            <div key={idx} className="flex justify-between">
-                               <span>- {item.name}</span>
-                               <span className="text-slate-500 text-sm">x{item.qty}</span>
-                            </div>
-                         ))}
-                      </div>
-                      <div className="text-xs font-medium text-slate-500 mt-3 pt-2 border-t border-slate-200 border-dashed">
-                         สั่งเมื่อ: {new Date(b.createdAt).toLocaleString('th-TH')}
-                      </div>
-                    </td>
-                    <td className="p-6">
-                      <div className="font-bold text-slate-700 text-sm mb-1"><MapPin size={14} className="inline text-rose-400 mr-1"/> {b.location}</div>
-                      <div className="text-xs text-slate-500 font-medium">ชื่อ: {b.requesterName}</div>
-                      {b.note && <div className="text-xs text-amber-600 font-medium mt-1 bg-amber-50 p-1.5 rounded-lg inline-block">หมายเหตุ: {b.note}</div>}
-                    </td>
-                    <td className="p-6 text-center">
-                      <div className="text-xl font-black text-amber-600">{b.totalPrice} ฿</div>
-                    </td>
-                    <td className="p-6"><StatusBadge status={b.status} type="order" /></td>
+          <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full text-left border-collapse min-w-[800px]">
+               <thead>
+                  <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
+                    <th className="p-6 font-bold uppercase tracking-wider w-1/3">รายการอาหาร</th>
+                    <th className="p-6 font-bold uppercase tracking-wider">จัดส่งที่</th>
+                    <th className="p-6 font-bold uppercase tracking-wider text-center">ราคารวม</th>
+                    <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
                   </tr>
-                )})}
-                {foodOrders.length === 0 && (
-                  <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการสั่งอาหาร</td></tr>
-                )}
-              </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100/80">
+                  {foodOrders.filter(b => user.role === 'admin' || b.createdBy === user.id || b.createdBy === 'guest').map(b => {
+                    let parsedItems = [];
+                    try { parsedItems = JSON.parse(b.itemsString); } catch(e){}
+                    return (
+                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="p-6">
+                        <div className="font-bold text-slate-800 text-base mb-2 space-y-1">
+                           {parsedItems.map((item, idx) => (
+                              <div key={idx} className="flex justify-between">
+                                 <span>- {item.name}</span>
+                                 <span className="text-slate-500 text-sm">x{item.qty}</span>
+                              </div>
+                           ))}
+                        </div>
+                        <div className="text-xs font-medium text-slate-500 mt-3 pt-2 border-t border-slate-200 border-dashed">
+                           สั่งเมื่อ: {new Date(b.createdAt).toLocaleString('th-TH')}
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        <div className="font-bold text-slate-700 text-sm mb-1"><MapPin size={14} className="inline text-rose-400 mr-1"/> {b.location}</div>
+                        <div className="text-xs text-slate-500 font-medium">ชื่อ: {b.requesterName}</div>
+                        {b.note && <div className="text-xs text-amber-600 font-medium mt-1 bg-amber-50 p-1.5 rounded-lg inline-block">หมายเหตุ: {b.note}</div>}
+                      </td>
+                      <td className="p-6 text-center">
+                        <div className="text-xl font-black text-amber-600">{b.totalPrice} ฿</div>
+                      </td>
+                      <td className="p-6"><StatusBadge status={b.status} type="order" /></td>
+                    </tr>
+                  )})}
+                  {foodOrders.length === 0 && (
+                    <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการสั่งอาหาร</td></tr>
+                  )}
+                </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -1373,55 +1378,57 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
 
       {view === 'my_bookings' && (
         <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-             <thead>
-                <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
-                  <th className="p-6 font-bold uppercase tracking-wider">เรื่อง / ปลายทาง</th>
-                  <th className="p-6 font-bold uppercase tracking-wider">รถ</th>
-                  <th className="p-6 font-bold uppercase tracking-wider">เวลาเดินทาง</th>
-                  <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
-                  <th className="p-6 font-bold uppercase tracking-wider text-center">จัดการ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100/80">
-                {carBookings.map(b => {
-                  const car = cars.find(c => c.id === b.carId);
-                  return (
-                  <tr key={b.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => viewDetails(b)}>
-                    <td className="p-6">
-                      <div className="font-bold text-slate-800 text-lg mb-1 flex items-center gap-2 group-hover:text-teal-600 transition-colors">
-                        {b.title}
-                      </div>
-                      <div className="text-sm font-medium text-slate-500 flex items-center gap-2"><MapPin size={14} className="text-rose-400"/> {b.destination} <span className="text-slate-300">•</span> ผู้จอง: {b.requesterName}</div>
-                      {b.attachment && b.attachment !== 'Error uploading file' && (
-                        <button 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            if(b.attachment.startsWith('data:')) alert('ไฟล์กำลังประมวลผล กรุณารีเฟรชหน้าเว็บอีกครั้ง'); 
-                            else window.open(b.attachment, '_blank'); 
-                          }} 
-                          className="text-indigo-500 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded-lg transition-colors mt-2 w-max"
-                        >
-                           <FileText size={14}/> เปิดเอกสารแนบ
-                        </button>
-                      )}
-                    </td>
-                    <td className="p-6 text-base font-bold text-teal-700">{car?.plate}</td>
-                    <td className="p-6">
-                      <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
-                      <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
-                    </td>
-                    <td className="p-6"><StatusBadge status={b.status} type="booking" /></td>
-                    <td className="p-6 text-center">
-                      <button onClick={(e) => { e.stopPropagation(); viewDetails(b); }} className="px-4 py-2 text-sm font-bold text-teal-600 bg-teal-50 hover:bg-teal-600 hover:text-white rounded-xl transition-all">ดูรายละเอียด</button>
-                    </td>
+          <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full text-left border-collapse min-w-[800px]">
+               <thead>
+                  <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
+                    <th className="p-6 font-bold uppercase tracking-wider">เรื่อง / ปลายทาง</th>
+                    <th className="p-6 font-bold uppercase tracking-wider">รถ</th>
+                    <th className="p-6 font-bold uppercase tracking-wider">เวลาเดินทาง</th>
+                    <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
+                    <th className="p-6 font-bold uppercase tracking-wider text-center">จัดการ</th>
                   </tr>
-                )})}
-                {carBookings.length === 0 && (
-                  <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการจอง</td></tr>
-                )}
-              </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100/80">
+                  {carBookings.map(b => {
+                    const car = cars.find(c => c.id === b.carId);
+                    return (
+                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => viewDetails(b)}>
+                      <td className="p-6">
+                        <div className="font-bold text-slate-800 text-lg mb-1 flex items-center gap-2 group-hover:text-teal-600 transition-colors">
+                          {b.title}
+                        </div>
+                        <div className="text-sm font-medium text-slate-500 flex items-center gap-2"><MapPin size={14} className="text-rose-400"/> {b.destination} <span className="text-slate-300">•</span> ผู้จอง: {b.requesterName}</div>
+                        {b.attachment && b.attachment !== 'Error uploading file' && (
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              if(b.attachment.startsWith('data:')) alert('ไฟล์กำลังประมวลผล กรุณารีเฟรชหน้าเว็บอีกครั้ง'); 
+                              else window.open(b.attachment, '_blank'); 
+                            }} 
+                            className="text-indigo-500 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded-lg transition-colors mt-2 w-max"
+                          >
+                             <FileText size={14}/> เปิดเอกสารแนบ
+                          </button>
+                        )}
+                      </td>
+                      <td className="p-6 text-base font-bold text-teal-700">{car?.plate}</td>
+                      <td className="p-6">
+                        <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
+                        <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
+                      </td>
+                      <td className="p-6"><StatusBadge status={b.status} type="booking" /></td>
+                      <td className="p-6 text-center">
+                        <button onClick={(e) => { e.stopPropagation(); viewDetails(b); }} className="px-4 py-2 text-sm font-bold text-teal-600 bg-teal-50 hover:bg-teal-600 hover:text-white rounded-xl transition-all">ดูรายละเอียด</button>
+                      </td>
+                    </tr>
+                  )})}
+                  {carBookings.length === 0 && (
+                    <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการจอง</td></tr>
+                  )}
+                </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -1456,143 +1463,145 @@ const Approvals = ({ roomBookings, setRoomBookings, carBookings, setCarBookings,
       </div>
 
       <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
-        <table className="w-full text-left border-collapse min-w-[800px]">
-          <thead>
-            <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
-              <th className="p-6 font-bold uppercase tracking-wider">รายการขออนุมัติ</th>
-              <th className="p-6 font-bold uppercase tracking-wider">รายละเอียด / สถานที่</th>
-              <th className="p-6 font-bold uppercase tracking-wider">เวลา</th>
-              <th className="p-6 font-bold uppercase tracking-wider text-center">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100/80">
-            {tab === 'rooms' && roomBookings.map(b => {
-               const room = rooms.find(r => r.id === b.roomId);
-               return (
-                <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="p-6">
-                    <div className="font-bold text-slate-800 text-lg mb-1">{b.title}</div>
-                    <div className="text-sm font-medium text-slate-500">โดย: {b.requesterName} {b.requesterPhone && <span className="text-slate-400 ml-1">({b.requesterPhone})</span>}</div>
-                  </td>
-                  <td className="p-6 text-base font-bold text-indigo-700">{room?.name}</td>
-                  <td className="p-6">
-                    <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
-                    <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
-                  </td>
-                  <td className="p-6 text-center">
-                    {b.status === 'pending' ? (
-                      <div className="flex justify-center gap-3">
-                        <button onClick={() => updateStatus(roomBookings, setRoomBookings, b.id, 'approved')} className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><Check size={18}/> อนุมัติ</button>
-                        <button onClick={() => updateStatus(roomBookings, setRoomBookings, b.id, 'rejected')} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><X size={18}/> ไม่อนุมัติ</button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1.5">
-                        <StatusBadge status={b.status} type="booking" />
-                        {b.status === 'approved' && (
-                          <button onClick={() => updateStatus(roomBookings, setRoomBookings, b.id, 'cancelled')} className="text-xs font-bold text-slate-400 hover:text-rose-500 underline transition-colors">เปลี่ยนเป็นยกเลิก</button>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-            
-            {tab === 'cars' && carBookings.map(b => {
-               const car = cars.find(c => c.id === b.carId);
-               return (
-                <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="p-6">
-                    <div className="font-bold text-slate-800 text-lg mb-1">{b.title}</div>
-                    <div className="text-sm font-medium text-slate-500 flex flex-col gap-1">
-                      <span className="flex items-center gap-1"><MapPin size={14} className="text-rose-400"/> ไป: {b.destination}</span>
-                      <span>โดย: {b.requesterName} {b.requesterPhone && <span className="text-slate-400 ml-1">({b.requesterPhone})</span>}</span>
-                      {b.attachment && b.attachment !== 'Error uploading file' && (
-                        <button 
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(b.attachment, '_blank');
-                          }} 
-                          className="text-indigo-500 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1.5 rounded-lg transition-colors mt-1 w-max"
-                        >
-                           <FileText size={14}/> ดูเอกสารอ้างอิง
-                        </button>
+        <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <table className="w-full text-left border-collapse min-w-[800px]">
+            <thead>
+              <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
+                <th className="p-6 font-bold uppercase tracking-wider">รายการขออนุมัติ</th>
+                <th className="p-6 font-bold uppercase tracking-wider">รายละเอียด / สถานที่</th>
+                <th className="p-6 font-bold uppercase tracking-wider">เวลา</th>
+                <th className="p-6 font-bold uppercase tracking-wider text-center">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100/80">
+              {tab === 'rooms' && roomBookings.map(b => {
+                 const room = rooms.find(r => r.id === b.roomId);
+                 return (
+                  <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="p-6">
+                      <div className="font-bold text-slate-800 text-lg mb-1">{b.title}</div>
+                      <div className="text-sm font-medium text-slate-500">โดย: {b.requesterName} {b.requesterPhone && <span className="text-slate-400 ml-1">({b.requesterPhone})</span>}</div>
+                    </td>
+                    <td className="p-6 text-base font-bold text-indigo-700">{room?.name}</td>
+                    <td className="p-6">
+                      <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
+                      <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
+                    </td>
+                    <td className="p-6 text-center">
+                      {b.status === 'pending' ? (
+                        <div className="flex justify-center gap-3">
+                          <button onClick={() => updateStatus(roomBookings, setRoomBookings, b.id, 'approved')} className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><Check size={18}/> อนุมัติ</button>
+                          <button onClick={() => updateStatus(roomBookings, setRoomBookings, b.id, 'rejected')} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><X size={18}/> ไม่อนุมัติ</button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5">
+                          <StatusBadge status={b.status} type="booking" />
+                          {b.status === 'approved' && (
+                            <button onClick={() => updateStatus(roomBookings, setRoomBookings, b.id, 'cancelled')} className="text-xs font-bold text-slate-400 hover:text-rose-500 underline transition-colors">เปลี่ยนเป็นยกเลิก</button>
+                          )}
+                        </div>
                       )}
-                    </div>
-                  </td>
-                  <td className="p-6 text-base font-bold text-teal-700">{car?.plate}</td>
-                  <td className="p-6">
-                    <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
-                    <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
-                  </td>
-                  <td className="p-6 text-center">
-                    {b.status === 'pending' ? (
-                      <div className="flex justify-center gap-3">
-                        <button onClick={() => updateStatus(carBookings, setCarBookings, b.id, 'approved')} className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><Check size={18}/> อนุมัติ</button>
-                        <button onClick={() => updateStatus(carBookings, setCarBookings, b.id, 'rejected')} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><X size={18}/> ไม่อนุมัติ</button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1.5">
-                        <StatusBadge status={b.status} type="booking" />
-                        {b.status === 'approved' && (
-                          <button onClick={() => updateStatus(carBookings, setCarBookings, b.id, 'cancelled')} className="text-xs font-bold text-slate-400 hover:text-rose-500 underline transition-colors">เปลี่ยนเป็นยกเลิก</button>
+                    </td>
+                  </tr>
+                )
+              })}
+              
+              {tab === 'cars' && carBookings.map(b => {
+                 const car = cars.find(c => c.id === b.carId);
+                 return (
+                  <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="p-6">
+                      <div className="font-bold text-slate-800 text-lg mb-1">{b.title}</div>
+                      <div className="text-sm font-medium text-slate-500 flex flex-col gap-1">
+                        <span className="flex items-center gap-1"><MapPin size={14} className="text-rose-400"/> ไป: {b.destination}</span>
+                        <span>โดย: {b.requesterName} {b.requesterPhone && <span className="text-slate-400 ml-1">({b.requesterPhone})</span>}</span>
+                        {b.attachment && b.attachment !== 'Error uploading file' && (
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(b.attachment, '_blank');
+                            }} 
+                            className="text-indigo-500 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1.5 rounded-lg transition-colors mt-1 w-max"
+                          >
+                             <FileText size={14}/> ดูเอกสารอ้างอิง
+                          </button>
                         )}
                       </div>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
+                    </td>
+                    <td className="p-6 text-base font-bold text-teal-700">{car?.plate}</td>
+                    <td className="p-6">
+                      <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
+                      <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
+                    </td>
+                    <td className="p-6 text-center">
+                      {b.status === 'pending' ? (
+                        <div className="flex justify-center gap-3">
+                          <button onClick={() => updateStatus(carBookings, setCarBookings, b.id, 'approved')} className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><Check size={18}/> อนุมัติ</button>
+                          <button onClick={() => updateStatus(carBookings, setCarBookings, b.id, 'rejected')} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><X size={18}/> ไม่อนุมัติ</button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5">
+                          <StatusBadge status={b.status} type="booking" />
+                          {b.status === 'approved' && (
+                            <button onClick={() => updateStatus(carBookings, setCarBookings, b.id, 'cancelled')} className="text-xs font-bold text-slate-400 hover:text-rose-500 underline transition-colors">เปลี่ยนเป็นยกเลิก</button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
 
-            {tab === 'foods' && foodOrders.map(b => {
-               let parsedItems = [];
-               try { parsedItems = JSON.parse(b.itemsString); } catch(e){}
-               return (
-                <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="p-6">
-                    <div className="font-bold text-slate-800 text-sm mb-1 space-y-1">
-                       {parsedItems.map((item, idx) => (
-                          <div key={idx} className="flex gap-2">
-                             <span className="text-slate-500">{item.qty}x</span> <span>{item.name}</span>
-                          </div>
-                       ))}
-                    </div>
-                    <div className="text-xs font-bold text-amber-600 mt-2 bg-amber-50 p-1.5 rounded inline-block">รวม {b.totalPrice} ฿</div>
-                  </td>
-                  <td className="p-6">
-                    <div className="text-sm font-bold text-slate-700 mb-1">{b.location}</div>
-                    <div className="text-sm font-medium text-slate-500">โดย: {b.requesterName} {b.requesterPhone && <span className="text-slate-400 ml-1">({b.requesterPhone})</span>}</div>
-                    {b.note && <div className="text-xs text-rose-500 mt-1">หมายเหตุ: {b.note}</div>}
-                  </td>
-                  <td className="p-6">
-                    <div className="text-sm font-bold text-slate-700">{new Date(b.createdAt).toLocaleTimeString('th-TH')}</div>
-                    <div className="text-xs font-medium text-slate-400 mt-1">{new Date(b.createdAt).toLocaleDateString('th-TH')}</div>
-                  </td>
-                  <td className="p-6 text-center">
-                    {b.status === 'pending' ? (
-                      <div className="flex justify-center gap-3">
-                        <button onClick={() => updateStatus(foodOrders, setFoodOrders, b.id, 'approved')} className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><Check size={18}/> รับออเดอร์</button>
-                        <button onClick={() => updateStatus(foodOrders, setFoodOrders, b.id, 'rejected')} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><X size={18}/> ยกเลิก</button>
+              {tab === 'foods' && foodOrders.map(b => {
+                 let parsedItems = [];
+                 try { parsedItems = JSON.parse(b.itemsString); } catch(e){}
+                 return (
+                  <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="p-6">
+                      <div className="font-bold text-slate-800 text-sm mb-1 space-y-1">
+                         {parsedItems.map((item, idx) => (
+                            <div key={idx} className="flex gap-2">
+                               <span className="text-slate-500">{item.qty}x</span> <span>{item.name}</span>
+                            </div>
+                         ))}
                       </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1.5">
-                        <StatusBadge status={b.status} type="order" />
-                        {b.status === 'approved' && (
-                          <button onClick={() => updateStatus(foodOrders, setFoodOrders, b.id, 'cancelled')} className="text-xs font-bold text-slate-400 hover:text-rose-500 underline transition-colors">เปลี่ยนเป็นยกเลิก</button>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
+                      <div className="text-xs font-bold text-amber-600 mt-2 bg-amber-50 p-1.5 rounded inline-block">รวม {b.totalPrice} ฿</div>
+                    </td>
+                    <td className="p-6">
+                      <div className="text-sm font-bold text-slate-700 mb-1">{b.location}</div>
+                      <div className="text-sm font-medium text-slate-500">โดย: {b.requesterName} {b.requesterPhone && <span className="text-slate-400 ml-1">({b.requesterPhone})</span>}</div>
+                      {b.note && <div className="text-xs text-rose-500 mt-1">หมายเหตุ: {b.note}</div>}
+                    </td>
+                    <td className="p-6">
+                      <div className="text-sm font-bold text-slate-700">{new Date(b.createdAt).toLocaleTimeString('th-TH')}</div>
+                      <div className="text-xs font-medium text-slate-400 mt-1">{new Date(b.createdAt).toLocaleDateString('th-TH')}</div>
+                    </td>
+                    <td className="p-6 text-center">
+                      {b.status === 'pending' ? (
+                        <div className="flex justify-center gap-3">
+                          <button onClick={() => updateStatus(foodOrders, setFoodOrders, b.id, 'approved')} className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><Check size={18}/> รับออเดอร์</button>
+                          <button onClick={() => updateStatus(foodOrders, setFoodOrders, b.id, 'rejected')} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><X size={18}/> ยกเลิก</button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5">
+                          <StatusBadge status={b.status} type="order" />
+                          {b.status === 'approved' && (
+                            <button onClick={() => updateStatus(foodOrders, setFoodOrders, b.id, 'cancelled')} className="text-xs font-bold text-slate-400 hover:text-rose-500 underline transition-colors">เปลี่ยนเป็นยกเลิก</button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
 
-            {((tab === 'rooms' && roomBookings.length === 0) || (tab === 'cars' && carBookings.length === 0) || (tab === 'foods' && foodOrders.length === 0)) && (
-               <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีรายการขออนุมัติ</td></tr>
-            )}
-          </tbody>
-        </table>
+              {((tab === 'rooms' && roomBookings.length === 0) || (tab === 'cars' && carBookings.length === 0) || (tab === 'foods' && foodOrders.length === 0)) && (
+                 <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีรายการขออนุมัติ</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
