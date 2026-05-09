@@ -278,8 +278,8 @@ const LoginScreen = ({ onGoogleLogin, onAdminLogin }) => {
       <div className="bg-white/80 backdrop-blur-2xl rounded-[3rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-white p-10 w-full max-w-md relative z-10 animate-in fade-in zoom-in duration-500">
         <div className="text-center mb-10">
           <img src="https://img2.pic.in.th/SBW.png" alt="SBW Logo" className="h-24 w-auto mx-auto mb-6 drop-shadow-md" />
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight leading-tight">SBW General<br/>Portal</h1>
-          <p className="text-sm font-bold text-slate-500 mt-3 uppercase tracking-widest">โรงเรียนสระบุรีวิทยาคม</p>
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight leading-tight">SBW General Portal</h1>
+          <p className="text-sm font-bold text-slate-500 mt-3 uppercase tracking-widest">ฝ่ายบริหารทั่วไป โรงเรียนสระบุรีวิทยาคม</p>
         </div>
 
         {error && <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 text-sm font-medium rounded-2xl text-center animate-bounce">{error}</div>}
