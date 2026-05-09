@@ -1486,7 +1486,12 @@ const Approvals = ({ roomBookings, setRoomBookings, carBookings, setCarBookings,
                         <button onClick={() => updateStatus(roomBookings, setRoomBookings, b.id, 'rejected')} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><X size={18}/> ไม่อนุมัติ</button>
                       </div>
                     ) : (
-                      <StatusBadge status={b.status} type="booking" />
+                      <div className="flex flex-col items-center gap-1.5">
+                        <StatusBadge status={b.status} type="booking" />
+                        {b.status === 'approved' && (
+                          <button onClick={() => updateStatus(roomBookings, setRoomBookings, b.id, 'cancelled')} className="text-xs font-bold text-slate-400 hover:text-rose-500 underline transition-colors">เปลี่ยนเป็นยกเลิก</button>
+                        )}
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -1528,7 +1533,12 @@ const Approvals = ({ roomBookings, setRoomBookings, carBookings, setCarBookings,
                         <button onClick={() => updateStatus(carBookings, setCarBookings, b.id, 'rejected')} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><X size={18}/> ไม่อนุมัติ</button>
                       </div>
                     ) : (
-                      <StatusBadge status={b.status} type="booking" />
+                      <div className="flex flex-col items-center gap-1.5">
+                        <StatusBadge status={b.status} type="booking" />
+                        {b.status === 'approved' && (
+                          <button onClick={() => updateStatus(carBookings, setCarBookings, b.id, 'cancelled')} className="text-xs font-bold text-slate-400 hover:text-rose-500 underline transition-colors">เปลี่ยนเป็นยกเลิก</button>
+                        )}
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -1566,7 +1576,12 @@ const Approvals = ({ roomBookings, setRoomBookings, carBookings, setCarBookings,
                         <button onClick={() => updateStatus(foodOrders, setFoodOrders, b.id, 'rejected')} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><X size={18}/> ยกเลิก</button>
                       </div>
                     ) : (
-                      <StatusBadge status={b.status} type="order" />
+                      <div className="flex flex-col items-center gap-1.5">
+                        <StatusBadge status={b.status} type="order" />
+                        {b.status === 'approved' && (
+                          <button onClick={() => updateStatus(foodOrders, setFoodOrders, b.id, 'cancelled')} className="text-xs font-bold text-slate-400 hover:text-rose-500 underline transition-colors">เปลี่ยนเป็นยกเลิก</button>
+                        )}
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -2225,6 +2240,7 @@ const StatusBadge = ({ status, type }) => {
       case 'pending': style += " bg-amber-50 text-amber-600 border border-amber-100"; text = "รอรับออเดอร์"; icon = <Clock size={14}/>; break;
       case 'approved': style += " bg-emerald-50 text-emerald-600 border border-emerald-100"; text = "จัดส่งเรียบร้อย"; icon = <CheckCircle size={14}/>; break;
       case 'rejected': style += " bg-rose-50 text-rose-600 border border-rose-100"; text = "ยกเลิกออเดอร์"; icon = <XCircle size={14}/>; break;
+      case 'cancelled': style += " bg-slate-100 text-slate-500 border border-slate-200"; text = "ยกเลิกโดย Admin"; icon = <XCircle size={14}/>; break;
       default: text = status;
     }
   }
