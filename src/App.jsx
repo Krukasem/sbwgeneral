@@ -42,7 +42,6 @@ const initialAdmins = [
 ];
 
 // --- Google Sheets API Config ---
-// นำ Web App URL ที่ได้จาก Google Apps Script มาใส่ที่นี่
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw7aZEV_BwfsqVMLsL0P8zc9S7HpwdRmqJqLM1gzZsP94S-7rvgslpTzlUHhPmYFsgn/exec";
 
 const syncToGoogleSheet = (action, data) => {
@@ -55,16 +54,13 @@ const syncToGoogleSheet = (action, data) => {
 };
 
 export default function App() {
-  // --- States ---
-  const [user, setUser] = useState(null); // null = แสดงหน้า Login
+  const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
 
-  // Admin Credentials State
   const [adminCreds, setAdminCreds] = useState({ username: 'admin', password: 'password123' });
 
-  // Data States
   const [tickets, setTickets] = useState([]);
   const [roomBookings, setRoomBookings] = useState([]);
   const [carBookings, setCarBookings] = useState([]);
@@ -78,10 +74,8 @@ export default function App() {
   const [foodCategories, setFoodCategories] = useState(initialFoodCategories);
   const [foods, setFoods] = useState(initialFoods);
 
-  // Load data from Google Sheets
   useEffect(() => {
     if (!SCRIPT_URL || SCRIPT_URL.includes("ใส่_URL")) {
-      // โหลดข้อมูล Mock เมื่อยังไม่ได้ตั้งค่า Google Sheets
       setIsLoadingDB(false);
       return;
     }
@@ -89,13 +83,15 @@ export default function App() {
     fetch(`${SCRIPT_URL}?action=getAll`)
       .then(res => res.json())
       .then(data => {
-        // .reverse() เพื่อให้ข้อมูลล่าสุดที่ถูกบันทึกมาอยู่ด้านบนสุดเสมอ
         if(data.tickets) setTickets(data.tickets.reverse());
         if(data.roomBookings) setRoomBookings(data.roomBookings.reverse());
         if(data.carBookings) setCarBookings(data.carBookings.reverse());
         if(data.foodOrders) setFoodOrders(data.foodOrders.reverse());
-        if(data.foodCategories && data.foodCategories.length > 0) setFoodCategories(data.foodCategories);
-        if(data.foods && data.foods.length > 0) setFoods(data.foods);
+        
+        if(data.foodCategories) setFoodCategories(data.foodCategories);
+        if(data.foods) setFoods(data.foods);
+        if(data.rooms) setRooms(data.rooms);
+        if(data.cars) setCars(data.cars);
         if(data.admins && data.admins.length > 0) setAdmins(data.admins);
         setIsLoadingDB(false);
       })
@@ -105,7 +101,6 @@ export default function App() {
       });
   }, []);
 
-  // --- Auth Handlers ---
   const handleAdminLogin = (username, password) => {
     const adminMatch = admins.find(a => a.username === username && a.password === password);
     if (adminMatch) {
@@ -131,14 +126,12 @@ export default function App() {
     setIsMobileMenuOpen(false);
   };
 
-  // --- Main Layout ---
   if (!user) {
     return <LoginScreen onGoogleLogin={handleGoogleLogin} onAdminLogin={handleAdminLogin} />;
   }
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-800 font-sans relative selection:bg-indigo-100 selection:text-indigo-900">
-      {/* Admin Login Modal */}
       {showAdminLogin && (
         <AdminLoginModal 
           onClose={() => setShowAdminLogin(false)} 
@@ -146,7 +139,6 @@ export default function App() {
         />
       )}
 
-      {/* Sidebar (Desktop) & Overlay (Mobile) */}
       <div className={`fixed inset-0 z-20 bg-slate-900/40 backdrop-blur-sm transition-opacity lg:hidden print:hidden ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsMobileMenuOpen(false)}></div>
       
       <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transform transition-transform duration-300 ease-out lg:translate-x-0 flex flex-col print:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -191,7 +183,6 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden print:overflow-visible print:h-auto">
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 flex items-center justify-between lg:hidden shadow-sm print:hidden sticky top-0 z-10">
           <div className="flex items-center gap-3">
@@ -206,7 +197,6 @@ export default function App() {
           </button>
         </header>
 
-        {/* Dynamic Content Area */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 print:p-0 hide-scrollbar scroll-smooth">
           <div className="max-w-7xl mx-auto space-y-8 print:max-w-none">
             {isLoadingDB ? (
@@ -1839,23 +1829,27 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
 
   const handleAddRoom = () => {
     if (!newRoom.name) return;
-    setRooms([...rooms, { 
+    const roomObj = { 
       id: 'r' + Date.now(), 
       ...newRoom, 
       status: 'ready', 
       image: newRoom.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=300&q=80' 
-    }]);
+    };
+    setRooms([...rooms, roomObj]);
+    syncToGoogleSheet('addRoom', roomObj);
     setNewRoom({ name: '', capacity: '', equipment: '', image: '' });
   };
 
   const handleAddCar = () => {
     if (!newCar.plate) return;
-    setCars([...cars, { 
+    const carObj = { 
       id: 'c' + Date.now(), 
       ...newCar, 
       status: 'ready',
       image: newCar.image || 'https://images.unsplash.com/photo-1549317661-bd32c8ce0be2?auto=format&fit=crop&w=300&q=80'
-    }]);
+    };
+    setCars([...cars, carObj]);
+    syncToGoogleSheet('addCar', carObj);
     setNewCar({ plate: '', type: 'รถตู้', capacity: '', driver: '', image: '' });
   };
 
@@ -2007,7 +2001,10 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
                   </div>
                   <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100 block w-max mt-2">{f.category || 'ไม่มีหมวดหมู่'} | จำกัด {f.maxQuantity}</span>
                 </div>
-                <button onClick={() => setFoods(foods.filter(item => item.id !== f.id))} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-3"><X size={16}/></button>
+                <button onClick={() => {
+                   setFoods(foods.filter(item => item.id !== f.id));
+                   syncToGoogleSheet('deleteFoodItem', { id: f.id });
+                }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-3"><X size={16}/></button>
               </div>
             ))}
           </div>
@@ -2063,7 +2060,10 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
                   <span className="text-sm font-bold text-slate-800 block mb-1">{r.name}</span>
                   <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100">ความจุ: {r.capacity} ท่าน | อุปกรณ์: {r.equipment}</span>
                 </div>
-                <button onClick={() => setRooms(rooms.filter(room => room.id !== r.id))} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-2"><X size={16}/></button>
+                <button onClick={() => {
+                   setRooms(rooms.filter(room => room.id !== r.id));
+                   syncToGoogleSheet('deleteRoom', { id: r.id });
+                }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-2"><X size={16}/></button>
               </li>
             ))}
           </ul>
@@ -2095,7 +2095,10 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
                   </div>
                   <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100 block w-max mt-2">คนขับ: {c.driver} | จุ: {c.capacity}</span>
                 </div>
-                <button onClick={() => setCars(cars.filter(car => car.id !== c.id))} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-3"><X size={16}/></button>
+                <button onClick={() => {
+                   setCars(cars.filter(car => car.id !== c.id));
+                   syncToGoogleSheet('deleteCar', { id: c.id });
+                }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-3"><X size={16}/></button>
               </div>
             ))}
           </div>
