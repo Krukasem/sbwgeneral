@@ -4,7 +4,7 @@ import {
   LogOut, Menu, X, Plus, CheckCircle, XCircle, Clock, 
   MapPin, AlertCircle, FileText, Check, ChevronRight, ChevronLeft,
   BarChart, Lock, Eye, Image as ImageIcon, Printer, DownloadCloud,
-  Utensils, ShoppingCart, Minus, Mail, ShieldAlert
+  Utensils, ShoppingCart, Minus, Mail, ShieldAlert, Filter
 } from 'lucide-react';
 
 // --- Mock Data ---
@@ -22,8 +22,8 @@ const initialRooms = [
 ];
 
 const initialCars = [
-  { id: 'c1', plate: 'นข 1122 สระบุรี', type: 'รถตู้', capacity: 12, driver: 'นายสมชาย ใจดี', status: 'ready', image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0be2?auto=format&fit=crop&w=300&q=80' },
-  { id: 'c2', plate: 'กท 9988 สระบุรี', type: 'รถกระบะ', capacity: 4, driver: 'นายสมหมาย มุ่งมั่น', status: 'ready', image: 'https://images.unsplash.com/photo-1559416523-140ddc3d238c?auto=format&fit=crop&w=300&q=80' },
+  { id: 'c1', plate: 'นข 1122 สระบุรี', type: 'รถตู้', capacity: 12, driver: 'นายสมชาย ใจดี', driverPhone: '081-111-1111', status: 'ready', image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0be2?auto=format&fit=crop&w=300&q=80' },
+  { id: 'c2', plate: 'กท 9988 สระบุรี', type: 'รถกระบะ', capacity: 4, driver: 'นายสมหมาย มุ่งมั่น', driverPhone: '082-222-2222', status: 'ready', image: 'https://images.unsplash.com/photo-1559416523-140ddc3d238c?auto=format&fit=crop&w=300&q=80' },
 ];
 
 const initialFoodCategories = [
@@ -38,7 +38,7 @@ const initialFoods = [
 ];
 
 const initialAdmins = [
-  { id: 'a1', username: 'admin', password: 'password123', name: 'ผู้ดูแลระบบหลัก' }
+  { id: 'a1', username: 'admin', password: 'password123', name: 'ผู้ดูแลระบบหลัก', permissions: 'all' }
 ];
 
 // --- Google Sheets API Config ---
@@ -54,12 +54,9 @@ const syncToGoogleSheet = (action, data) => {
 };
 
 export default function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(null); 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
-
-  const [adminCreds, setAdminCreds] = useState({ username: 'admin', password: 'password123' });
 
   const [tickets, setTickets] = useState([]);
   const [roomBookings, setRoomBookings] = useState([]);
@@ -104,7 +101,8 @@ export default function App() {
   const handleAdminLogin = (username, password) => {
     const adminMatch = admins.find(a => a.username === username && a.password === password);
     if (adminMatch) {
-      setUser({ ...adminMatch, role: 'admin' });
+      const perms = adminMatch.permissions ? (typeof adminMatch.permissions === 'string' ? adminMatch.permissions.split(',') : adminMatch.permissions) : ['all'];
+      setUser({ ...adminMatch, role: 'admin', permissions: perms });
       setActiveTab('dashboard');
       return true;
     }
@@ -117,9 +115,7 @@ export default function App() {
     setActiveTab('dashboard');
   };
 
-  const handleLogout = () => {
-    setUser(null);
-  };
+  const handleLogout = () => setUser(null);
 
   const navigate = (tab) => {
     setActiveTab(tab);
@@ -130,15 +126,11 @@ export default function App() {
     return <LoginScreen onGoogleLogin={handleGoogleLogin} onAdminLogin={handleAdminLogin} />;
   }
 
+  const canManageApprovals = user.role === 'admin' && (user.permissions?.includes('all') || user.permissions?.includes('rooms') || user.permissions?.includes('cars') || user.permissions?.includes('foods'));
+  const isAdmin = user.role === 'admin';
+
   return (
     <div className="flex h-screen bg-slate-50 text-slate-800 font-sans relative selection:bg-indigo-100 selection:text-indigo-900">
-      {showAdminLogin && (
-        <AdminLoginModal 
-          onClose={() => setShowAdminLogin(false)} 
-          onLogin={handleAdminLogin} 
-        />
-      )}
-
       <div className={`fixed inset-0 z-20 bg-slate-900/40 backdrop-blur-sm transition-opacity lg:hidden print:hidden ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsMobileMenuOpen(false)}></div>
       
       <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transform transition-transform duration-300 ease-out lg:translate-x-0 flex flex-col print:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -156,11 +148,11 @@ export default function App() {
           <NavItem icon={<Car />} label="จองรถโรงเรียน" active={activeTab === 'cars'} onClick={() => navigate('cars')} />
           <NavItem icon={<Utensils />} label="สั่งอาหาร/เครื่องดื่ม" active={activeTab === 'food'} onClick={() => navigate('food')} />
           
-          {user.role === 'admin' && (
+          {isAdmin && (
             <div className="mt-6">
               <div className="px-4 mb-3 text-xs font-bold text-indigo-400/80 uppercase tracking-widest">ส่วนผู้ดูแลระบบ</div>
               <div className="space-y-2">
-                <NavItem icon={<CheckCircle />} label="ระบบอนุมัติ" active={activeTab === 'approvals'} onClick={() => navigate('approvals')} />
+                {canManageApprovals && <NavItem icon={<CheckCircle />} label="ระบบอนุมัติ" active={activeTab === 'approvals'} onClick={() => navigate('approvals')} />}
                 <NavItem icon={<BarChart />} label="รายงานสรุปผล" active={activeTab === 'reports'} onClick={() => navigate('reports')} />
                 <NavItem icon={<Settings />} label="ตั้งค่าระบบ" active={activeTab === 'settings'} onClick={() => navigate('settings')} />
               </div>
@@ -211,9 +203,9 @@ export default function App() {
                 {activeTab === 'rooms' && <RoomBooking user={user} rooms={rooms} roomBookings={roomBookings} setRoomBookings={setRoomBookings} />}
                 {activeTab === 'cars' && <CarBooking user={user} cars={cars} carBookings={carBookings} setCarBookings={setCarBookings} />}
                 {activeTab === 'food' && <FoodOrdering user={user} foods={foods} foodCategories={foodCategories} foodOrders={foodOrders} setFoodOrders={setFoodOrders} />}
-                {activeTab === 'approvals' && user.role === 'admin' && <Approvals roomBookings={roomBookings} setRoomBookings={setRoomBookings} carBookings={carBookings} setCarBookings={setCarBookings} foodOrders={foodOrders} setFoodOrders={setFoodOrders} rooms={rooms} cars={cars} />}
-                {activeTab === 'reports' && user.role === 'admin' && <Reports tickets={tickets} roomBookings={roomBookings} carBookings={carBookings} foodOrders={foodOrders} rooms={rooms} cars={cars} foods={foods} categories={categories} />}
-                {activeTab === 'settings' && user.role === 'admin' && <SettingsView categories={categories} setCategories={setCategories} rooms={rooms} setRooms={setRooms} cars={cars} setCars={setCars} foodCategories={foodCategories} setFoodCategories={setFoodCategories} foods={foods} setFoods={setFoods} admins={admins} setAdmins={setAdmins} loggedInUser={user} />}
+                {activeTab === 'approvals' && canManageApprovals && <Approvals user={user} roomBookings={roomBookings} setRoomBookings={setRoomBookings} carBookings={carBookings} setCarBookings={setCarBookings} foodOrders={foodOrders} setFoodOrders={setFoodOrders} rooms={rooms} cars={cars} />}
+                {activeTab === 'reports' && user.role === 'admin' && <Reports user={user} tickets={tickets} roomBookings={roomBookings} carBookings={carBookings} foodOrders={foodOrders} rooms={rooms} cars={cars} foods={foods} categories={categories} />}
+                {activeTab === 'settings' && user.role === 'admin' && <SettingsView user={user} categories={categories} setCategories={setCategories} rooms={rooms} setRooms={setRooms} cars={cars} setCars={setCars} foodCategories={foodCategories} setFoodCategories={setFoodCategories} foods={foods} setFoods={setFoods} admins={admins} setAdmins={setAdmins} loggedInUser={user} />}
               </>
             )}
           </div>
@@ -222,8 +214,6 @@ export default function App() {
     </div>
   );
 }
-
-// --- Components ---
 
 const NavItem = ({ icon, label, active, onClick }) => (
   <button 
@@ -246,7 +236,7 @@ const LoginScreen = ({ onGoogleLogin, onAdminLogin }) => {
   const handleAdminSubmit = (e) => {
     e.preventDefault();
     if (!onAdminLogin(username, password)) {
-      setError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+      setError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือไม่มีสิทธิ์เข้าถึง');
     }
   };
 
@@ -268,7 +258,7 @@ const LoginScreen = ({ onGoogleLogin, onAdminLogin }) => {
       <div className="bg-white/80 backdrop-blur-2xl rounded-[3rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-white p-10 w-full max-w-md relative z-10 animate-in fade-in zoom-in duration-500">
         <div className="text-center mb-10">
           <img src="https://img2.pic.in.th/SBW.png" alt="SBW Logo" className="h-24 w-auto mx-auto mb-6 drop-shadow-md" />
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight leading-tight">SBW General Portal</h1>
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight leading-tight flex justify-center items-center gap-2">SBW General Portal</h1>
           <p className="text-sm font-bold text-slate-500 mt-3 uppercase tracking-widest">ฝ่ายบริหารทั่วไป โรงเรียนสระบุรีวิทยาคม</p>
         </div>
 
@@ -389,11 +379,23 @@ const Dashboard = ({ user, tickets, roomBookings, carBookings, foodOrders }) => 
   );
 };
 
-// --- Helpdesk System ---
 const Helpdesk = ({ user, tickets, setTickets, categories }) => {
   const [view, setView] = useState('list'); 
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', title: '', category: categories[0]?.name || '', location: '', description: '', image: null });
+  const [filterDate, setFilterDate] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+
+  const canManageHelpdesk = user.role === 'admin' && (user.permissions?.includes('all') || user.permissions?.includes('helpdesk'));
+
+  const filteredTickets = tickets.filter(t => {
+    if (filterStatus !== 'all' && t.status !== filterStatus) return false;
+    if (filterDate) {
+      const tDate = new Date(t.createdAt).toLocaleDateString('en-CA');
+      if (tDate !== filterDate) return false;
+    }
+    return true;
+  });
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -597,7 +599,7 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
               </div>
             </div>
 
-            {user.role === 'admin' && (
+            {canManageHelpdesk && (
               <div className="border-t border-slate-100 pt-8 mt-4">
                 <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100/50">
                   <label className="block text-sm font-bold text-indigo-900 mb-3 ml-1">จัดการอัปเดตสถานะงาน (Admin)</label>
@@ -619,7 +621,36 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
       )}
 
       {view === 'list' && (
-        <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
+        <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+               <Filter size={20} className="text-slate-400" />
+               <span className="font-bold text-slate-700">ตัวกรอง:</span>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+               <input 
+                 type="date" 
+                 value={filterDate} 
+                 onChange={e => setFilterDate(e.target.value)} 
+                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-sm text-slate-700"
+               />
+               <select 
+                 value={filterStatus} 
+                 onChange={e => setFilterStatus(e.target.value)} 
+                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-slate-700"
+               >
+                  <option value="all">ทุกสถานะ</option>
+                  <option value="pending">รอรับงาน</option>
+                  <option value="in_progress">กำลังดำเนินการ</option>
+                  <option value="completed">เสร็จสิ้น</option>
+                  <option value="cancelled">ยกเลิก</option>
+               </select>
+               {(filterDate || filterStatus !== 'all') && (
+                 <button onClick={() => { setFilterDate(''); setFilterStatus('all'); }} className="text-sm font-bold text-rose-500 hover:text-rose-700 px-3">ล้างค่า</button>
+               )}
+            </div>
+          </div>
+
           <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
@@ -628,11 +659,11 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
                   <th className="p-6 font-bold uppercase tracking-wider">สถานที่</th>
                   <th className="p-6 font-bold uppercase tracking-wider">ประเภท</th>
                   <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
-                  <th className="p-6 font-bold uppercase tracking-wider text-center">{user.role === 'admin' ? 'จัดการ' : 'การกระทำ'}</th>
+                  <th className="p-6 font-bold uppercase tracking-wider text-center">{canManageHelpdesk ? 'จัดการ' : 'การกระทำ'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
-                {tickets.map(t => (
+                {filteredTickets.map(t => (
                   <tr key={t.id} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="p-6 cursor-pointer" onClick={() => viewDetails(t)}>
                       <div className="font-bold text-slate-800 text-lg flex items-center gap-3 group-hover:text-indigo-600 transition-colors">
@@ -648,7 +679,7 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
                     <td className="p-6 text-sm font-medium text-slate-600"><span className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl">{t.category}</span></td>
                     <td className="p-6"><StatusBadge status={t.status} type="ticket" /></td>
                     <td className="p-6 text-center">
-                      {user.role === 'admin' ? (
+                      {canManageHelpdesk ? (
                         <div className="flex items-center justify-center gap-3">
                           <button onClick={() => viewDetails(t)} className="p-2.5 text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="ดูรายละเอียด"><Eye size={18}/></button>
                           <select 
@@ -668,8 +699,8 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
                     </td>
                   </tr>
                 ))}
-                {tickets.length === 0 && (
-                  <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีรายการแจ้งซ่อมในระบบ</td></tr>
+                {filteredTickets.length === 0 && (
+                  <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลที่ตรงกับเงื่อนไข</td></tr>
                 )}
               </tbody>
             </table>
@@ -680,7 +711,6 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
   );
 };
 
-// --- Room Booking System ---
 const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
   const [view, setView] = useState('calendar'); 
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -735,8 +765,13 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
           {rooms.map(room => (
             <div key={room.id} className="bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col group hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300">
-              <div className="relative overflow-hidden h-56">
-                <img src={room.image} alt={room.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+              <div className="relative overflow-hidden h-56 bg-slate-100">
+                <img 
+                  src={room.image && room.image.includes('drive.google.com') ? `https://drive.google.com/thumbnail?id=${room.image.match(/\/d\/(.+?)\//)?.[1] || room.image.match(/id=(.+?)$/)?.[1]}&sz=w800` : room.image} 
+                  alt={room.name} 
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/600x400/f8fafc/64748b?text=Room+Image'; }}
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent"></div>
                 <h3 className="absolute bottom-5 left-6 right-6 text-2xl font-black text-white leading-tight drop-shadow-md">{room.name}</h3>
               </div>
@@ -853,272 +888,35 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
   );
 };
 
-// --- Food Ordering System ---
-const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }) => {
-  const [view, setView] = useState('menu'); 
-  const [cart, setCart] = useState({});
-  const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', location: '', note: '' });
-  const [activeCategory, setActiveCategory] = useState('all');
-
-  const totalCartItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
-
-  const updateCart = (foodId, delta) => {
-    const currentQty = cart[foodId] || 0;
-    const food = foods.find(f => f.id === foodId);
-    let newQty = currentQty + delta;
-    if (newQty > food.maxQuantity) newQty = food.maxQuantity;
-    
-    setCart(prev => {
-      const updated = { ...prev };
-      if (newQty <= 0) {
-        delete updated[foodId];
-      } else {
-        updated[foodId] = newQty;
-      }
-      return updated;
-    });
-  };
-
-  const handleOrder = (e) => {
-    e.preventDefault();
-    if(totalCartItems === 0) return;
-
-    const orderItems = Object.keys(cart).map(foodId => {
-      const food = foods.find(f => f.id === foodId);
-      return { id: foodId, name: food.name, price: food.price, qty: cart[foodId] };
-    });
-    const totalPrice = orderItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
-
-    const newOrder = {
-      id: 'fo' + Date.now(),
-      itemsString: JSON.stringify(orderItems),
-      totalPrice,
-      ...formData,
-      status: 'pending',
-      createdBy: user.id,
-      createdAt: new Date().toISOString()
-    };
-    
-    setFoodOrders([newOrder, ...foodOrders]);
-    syncToGoogleSheet('addFoodOrder', newOrder);
-    setCart({});
-    setView('my_orders');
-    setFormData({ requesterName: user.name || '', requesterPhone: '', location: '', note: '' });
-  };
-
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col xl:flex-row xl:justify-between xl:items-center gap-6">
-        <h2 className="text-3xl font-black text-slate-800 tracking-tight">ระบบสั่งอาหาร/เครื่องดื่ม</h2>
-        <div className="flex bg-slate-200/60 p-1.5 rounded-2xl shadow-inner w-max">
-          <button onClick={() => setView('menu')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'menu' ? 'bg-white shadow-sm text-amber-600 scale-100' : 'text-slate-500 hover:text-slate-800'}`}>เมนูอาหาร</button>
-          <button onClick={() => setView('cart')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all relative ${view === 'cart' ? 'bg-white shadow-sm text-amber-600' : 'text-slate-500 hover:text-slate-800'}`}>
-            ตะกร้าสินค้า
-            {totalCartItems > 0 && <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full animate-pulse">{totalCartItems}</span>}
-          </button>
-          <button onClick={() => setView('my_orders')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'my_orders' ? 'bg-white shadow-sm text-amber-600' : 'text-slate-500 hover:text-slate-800'}`}>ออเดอร์ของฉัน</button>
-        </div>
-      </div>
-
-      {view === 'menu' && (
-        <div className="space-y-6">
-          {/* Category Filter Pills */}
-          <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pt-1" style={{ WebkitOverflowScrolling: 'touch' }}>
-             <button onClick={() => setActiveCategory('all')} className={`whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${activeCategory === 'all' ? 'bg-amber-500 text-white shadow-md shadow-amber-200 scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>ทั้งหมด</button>
-             {foodCategories.map(cat => (
-               <button key={cat.id} onClick={() => setActiveCategory(cat.name)} className={`whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${activeCategory === cat.name ? 'bg-amber-500 text-white shadow-md shadow-amber-200 scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>
-                 {cat.name}
-               </button>
-             ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            {foods.filter(f => activeCategory === 'all' || f.category === activeCategory).map(food => {
-               const qtyInCart = cart[food.id] || 0;
-               return (
-                <div key={food.id} className="bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col group hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300">
-                  <div className="relative overflow-hidden h-48 bg-slate-100">
-                    {food.image && food.image !== 'Error uploading image' ? (
-                       <img 
-                         src={food.image.includes('drive.google.com') ? `https://drive.google.com/thumbnail?id=${food.image.match(/\/d\/(.+?)\//)?.[1] || food.image.match(/id=(.+?)$/)?.[1]}&sz=w800` : food.image} 
-                         alt={food.name} 
-                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-                         onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/600x400/f8fafc/64748b?text=Food+Image'; }}
-                       />
-                    ) : (
-                       <div className="w-full h-full flex items-center justify-center text-slate-300"><Utensils size={48}/></div>
-                    )}
-                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-slate-800 font-black px-3 py-1.5 rounded-xl shadow-sm">
-                      ฿{food.price}
-                    </div>
-                  </div>
-                  <div className="p-6 flex-1 flex flex-col">
-                    <div className="mb-6 flex-1">
-                      <h3 className="text-xl font-black text-slate-800 leading-tight mb-2">{food.name}</h3>
-                      <p className="text-sm font-medium text-slate-500">จำนวนที่สามารถสั่งได้: {food.maxQuantity} รายการ</p>
-                    </div>
-                    <div className="flex items-center justify-between bg-slate-50 rounded-2xl p-2 border border-slate-100">
-                       {qtyInCart === 0 ? (
-                         <button onClick={() => updateCart(food.id, 1)} className="w-full bg-amber-100 text-amber-700 font-bold py-3 rounded-xl hover:bg-amber-200 active:scale-95 transition-all flex justify-center items-center gap-2">
-                           <Plus size={18}/> เพิ่มลงตะกร้า
-                         </button>
-                       ) : (
-                         <div className="w-full flex items-center justify-between px-2">
-                           <button onClick={() => updateCart(food.id, -1)} className="w-10 h-10 bg-white rounded-xl shadow-sm text-slate-600 hover:text-rose-500 flex items-center justify-center active:scale-95 transition-all"><Minus size={18}/></button>
-                           <span className="font-black text-lg text-slate-800 w-12 text-center">{qtyInCart}</span>
-                           <button onClick={() => updateCart(food.id, 1)} className="w-10 h-10 bg-white rounded-xl shadow-sm text-slate-600 hover:text-emerald-500 flex items-center justify-center active:scale-95 transition-all"><Plus size={18}/></button>
-                         </div>
-                       )}
-                    </div>
-                  </div>
-                </div>
-               );
-            })}
-          </div>
-        </div>
-      )}
-
-      {view === 'cart' && (
-        <div className="max-w-3xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
-          <form onSubmit={handleOrder} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white">
-            <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-6">
-              <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl"><ShoppingCart size={24}/></div>
-              <h3 className="text-2xl font-black text-slate-800">สรุปรายการอาหาร</h3>
-            </div>
-            
-            {totalCartItems === 0 ? (
-              <div className="text-center py-12">
-                 <ShoppingCart size={48} className="mx-auto text-slate-200 mb-4" />
-                 <p className="text-lg font-bold text-slate-400">ยังไม่มีรายการอาหารในตะกร้า</p>
-                 <button type="button" onClick={() => setView('menu')} className="mt-6 px-6 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold hover:bg-amber-200 transition-colors">กลับไปเลือกเมนู</button>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="space-y-4 mb-8">
-                   {Object.keys(cart).map(foodId => {
-                      const food = foods.find(f => f.id === foodId);
-                      const qty = cart[foodId];
-                      return (
-                         <div key={foodId} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                            <div>
-                               <p className="font-bold text-slate-800 text-lg">{food.name}</p>
-                               <p className="text-sm font-medium text-slate-500">{food.price} บาท x {qty}</p>
-                            </div>
-                            <div className="font-black text-lg text-slate-800">
-                               {food.price * qty} ฿
-                            </div>
-                         </div>
-                      )
-                   })}
-                   <div className="flex justify-between items-center p-4 border-t border-slate-200 mt-4">
-                      <p className="font-bold text-slate-500">ราคาสุทธิ</p>
-                      <p className="font-black text-3xl text-amber-600">
-                         {Object.keys(cart).reduce((sum, id) => sum + (foods.find(f => f.id === id).price * cart[id]), 0)} ฿
-                      </p>
-                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-bold text-slate-700 ml-1">ชื่อ-นามสกุล ผู้สั่ง</label>
-                    <input required type="text" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium"
-                      value={formData.requesterName} onChange={e => setFormData({...formData, requesterName: e.target.value})} placeholder="ระบุชื่อของคุณ" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-bold text-slate-700 ml-1">เบอร์โทรศัพท์</label>
-                    <input required type="tel" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium"
-                      value={formData.requesterPhone} onChange={e => setFormData({...formData, requesterPhone: e.target.value})} placeholder="08X-XXX-XXXX" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700 ml-1">สถานที่จัดส่ง / รับอาหาร</label>
-                  <input required type="text" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium"
-                    value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="เช่น ห้องพักครูหมวดวิทย์, มารับเอง" />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700 ml-1">หมายเหตุเพิ่มเติม</label>
-                  <textarea rows="2" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium resize-none"
-                    value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} placeholder="เช่น ไม่เผ็ด, ไม่ใส่ผักชี (ไม่บังคับ)"></textarea>
-                </div>
-                <div className="pt-6 flex gap-4">
-                  <button type="submit" className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-amber-200 hover:shadow-2xl active:scale-[0.98] transition-all">ยืนยันการสั่งอาหาร</button>
-                </div>
-              </div>
-            )}
-          </form>
-        </div>
-      )}
-
-      {view === 'my_orders' && (
-        <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
-          <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <table className="w-full text-left border-collapse min-w-[800px]">
-               <thead>
-                  <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
-                    <th className="p-6 font-bold uppercase tracking-wider w-1/3">รายการอาหาร</th>
-                    <th className="p-6 font-bold uppercase tracking-wider">จัดส่งที่</th>
-                    <th className="p-6 font-bold uppercase tracking-wider text-center">ราคารวม</th>
-                    <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100/80">
-                  {foodOrders.filter(b => user.role === 'admin' || b.createdBy === user.id || b.createdBy === 'guest').map(b => {
-                    let parsedItems = [];
-                    try { parsedItems = JSON.parse(b.itemsString); } catch(e){}
-                    return (
-                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="p-6">
-                        <div className="font-bold text-slate-800 text-base mb-2 space-y-1">
-                           {parsedItems.map((item, idx) => (
-                              <div key={idx} className="flex justify-between">
-                                 <span>- {item.name}</span>
-                                 <span className="text-slate-500 text-sm">x{item.qty}</span>
-                              </div>
-                           ))}
-                        </div>
-                        <div className="text-xs font-medium text-slate-500 mt-3 pt-2 border-t border-slate-200 border-dashed">
-                           สั่งเมื่อ: {new Date(b.createdAt).toLocaleString('th-TH')}
-                        </div>
-                      </td>
-                      <td className="p-6">
-                        <div className="font-bold text-slate-700 text-sm mb-1"><MapPin size={14} className="inline text-rose-400 mr-1"/> {b.location}</div>
-                        <div className="text-xs text-slate-500 font-medium">ชื่อ: {b.requesterName}</div>
-                        {b.note && <div className="text-xs text-amber-600 font-medium mt-1 bg-amber-50 p-1.5 rounded-lg inline-block">หมายเหตุ: {b.note}</div>}
-                      </td>
-                      <td className="p-6 text-center">
-                        <div className="text-xl font-black text-amber-600">{b.totalPrice} ฿</div>
-                      </td>
-                      <td className="p-6"><StatusBadge status={b.status} type="order" /></td>
-                    </tr>
-                  )})}
-                  {foodOrders.length === 0 && (
-                    <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการสั่งอาหาร</td></tr>
-                  )}
-                </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// --- Car Booking System ---
 const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
   const [view, setView] = useState('calendar'); 
   const [selectedCar, setSelectedCar] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', title: '', destination: '', passengers: 1, startTime: '', endTime: '', attachment: null });
+  const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', title: '', destination: '', passengers: 1, startTime: '', endTime: '', attachment: null, selfDrive: false });
   const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  const checkAvailability = (carId, start, end) => {
+  const checkAvailability = (carId, start, end, selfDrive) => {
     const sTime = new Date(start).getTime();
     const eTime = new Date(end).getTime();
+    const targetCar = cars.find(c => c.id === carId);
+
     return !carBookings.some(b => {
-      if (b.carId !== carId || b.status === 'rejected' || b.status === 'cancelled') return false;
+      if (b.status === 'rejected' || b.status === 'cancelled') return false;
       const bStart = new Date(b.startTime).getTime();
       const bEnd = new Date(b.endTime).getTime();
-      return (sTime < bEnd && eTime > bStart); 
+      const isOverlapping = (sTime < bEnd && eTime > bStart);
+      
+      if (!isOverlapping) return false;
+      if (b.carId === carId) return true;
+
+      if (!selfDrive && !b.selfDrive && targetCar && targetCar.driver && targetCar.driver !== '-' && targetCar.driver !== 'ไม่มี') {
+          const bookedCar = cars.find(c => c.id === b.carId);
+          if (bookedCar && bookedCar.driver === targetCar.driver) {
+              return true; 
+          }
+      }
+      return false;
     });
   };
 
@@ -1137,15 +935,23 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
     if (new Date(formData.startTime) >= new Date(formData.endTime)) {
       setErrorMsg('เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น'); return;
     }
-    if (!checkAvailability(selectedCar.id, formData.startTime, formData.endTime)) {
-      setErrorMsg('รถโรงเรียนคันนี้ไม่ว่างในช่วงเวลาดังกล่าว (มีการจองซ้ำ)'); return;
+    if (!checkAvailability(selectedCar.id, formData.startTime, formData.endTime, formData.selfDrive)) {
+      setErrorMsg('รถโรงเรียนคันนี้ไม่ว่าง หรือคนขับติดภารกิจในช่วงเวลาดังกล่าว'); return;
     }
 
     const newBooking = { id: 'cb' + Date.now(), carId: selectedCar.id, ...formData, status: 'pending', createdBy: user.id, createdAt: new Date().toISOString() };
     setCarBookings([newBooking, ...carBookings]);
     syncToGoogleSheet('addCarBooking', newBooking);
     setView('my_bookings');
-    setFormData({ requesterName: user.name || '', requesterPhone: '', title: '', destination: '', passengers: 1, startTime: '', endTime: '', attachment: null });
+    
+    if (!formData.selfDrive && selectedCar.driver && selectedCar.driver !== '-' && selectedCar.driver !== 'ไม่มี') {
+        setSuccessMsg(`จองรถสำเร็จ! กรุณาติดต่อคนขับรถเพื่อยืนยัน: คุณ ${selectedCar.driver} โทร. ${selectedCar.driverPhone || 'ไม่ระบุ'}`);
+    } else {
+        setSuccessMsg('ส่งคำขอจองรถสำเร็จ');
+    }
+    setTimeout(() => setSuccessMsg(''), 10000);
+
+    setFormData({ requesterName: user.name || '', requesterPhone: '', title: '', destination: '', passengers: 1, startTime: '', endTime: '', attachment: null, selfDrive: false });
   };
 
   const viewDetails = (booking) => {
@@ -1184,7 +990,12 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
             <div key={car.id} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white flex flex-col sm:flex-row items-center sm:items-start gap-8 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300">
               <div className="w-32 h-32 bg-gradient-to-br from-teal-50 to-emerald-100 rounded-[2rem] flex items-center justify-center text-teal-600 shadow-inner flex-shrink-0 overflow-hidden relative">
                 {car.image && car.image !== 'Error uploading image' ? (
-                  <img src={car.image} alt={car.plate} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  <img 
+                    src={car.image.includes('drive.google.com') ? `https://drive.google.com/thumbnail?id=${car.image.match(/\/d\/(.+?)\//)?.[1] || car.image.match(/id=(.+?)$/)?.[1]}&sz=w800` : car.image} 
+                    alt={car.plate} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/600x400/f8fafc/64748b?text=Car+Image'; }}
+                  />
                 ) : (
                   <Car size={56} />
                 )}
@@ -1195,7 +1006,7 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
                   <span className="text-xs font-bold px-3 py-1.5 bg-slate-100 rounded-xl text-slate-600 tracking-wider uppercase">{car.type}</span>
                 </div>
                 <div className="text-sm font-medium text-slate-500 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2">
-                  <p className="flex justify-between"><span>พนักงานขับรถ:</span> <span className="font-bold text-slate-700">{car.driver}</span></p>
+                  <p className="flex justify-between"><span>พนักงานขับรถ:</span> <span className="font-bold text-slate-700">{car.driver} {car.driverPhone && `(${car.driverPhone})`}</span></p>
                   <p className="flex justify-between"><span>ความจุ:</span> <span className="font-bold text-slate-700">{car.capacity} ที่นั่ง</span></p>
                 </div>
                 <button 
@@ -1224,6 +1035,11 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
             {errorMsg && <div className="mb-6 p-4 bg-rose-50 text-rose-600 text-sm font-bold rounded-2xl border border-rose-100 flex items-center gap-3 animate-bounce"><AlertCircle size={20}/> {errorMsg}</div>}
 
             <div className="space-y-6">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-center gap-3 mb-6">
+                 <input type="checkbox" id="selfDrive" checked={formData.selfDrive} onChange={e => setFormData({...formData, selfDrive: e.target.checked})} className="w-5 h-5 accent-teal-500" />
+                 <label htmlFor="selfDrive" className="font-bold text-slate-700 cursor-pointer select-none">ไม่ใช้คนขับรถ (ขับเอง)</label>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="block text-sm font-bold text-slate-700 ml-1">ชื่อ-นามสกุล ผู้จอง</label>
@@ -1322,7 +1138,7 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
                     <div className="flex items-center justify-between bg-teal-50/50 p-5 rounded-3xl text-teal-800 font-medium border border-teal-100/50">
                        <div className="flex flex-col gap-1">
                           <span className="font-black text-lg text-teal-700">{car?.plate}</span>
-                          <span className="text-sm">คนขับ: {car?.driver}</span>
+                          <span className="text-sm">คนขับ: {selectedBooking.selfDrive ? 'ขับเอง' : car?.driver}</span>
                        </div>
                        <div className="text-right">
                           <span className="text-xs bg-white px-2 py-1 rounded-lg border border-teal-100 shadow-sm">{car?.type}</span>
@@ -1367,54 +1183,378 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
       })()}
 
       {view === 'my_bookings' && (
+        <>
+          {successMsg && (
+            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 text-emerald-700 font-medium rounded-2xl flex items-center gap-3 animate-in slide-in-from-top-4 shadow-sm whitespace-pre-line">
+              <CheckCircle size={24}/> {successMsg}
+            </div>
+          )}
+          <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
+            <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <table className="w-full text-left border-collapse min-w-[800px]">
+                 <thead>
+                    <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
+                      <th className="p-6 font-bold uppercase tracking-wider">เรื่อง / ปลายทาง</th>
+                      <th className="p-6 font-bold uppercase tracking-wider">รถ</th>
+                      <th className="p-6 font-bold uppercase tracking-wider">เวลาเดินทาง</th>
+                      <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
+                      <th className="p-6 font-bold uppercase tracking-wider text-center">จัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100/80">
+                    {carBookings.map(b => {
+                      const car = cars.find(c => c.id === b.carId);
+                      return (
+                      <tr key={b.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => viewDetails(b)}>
+                        <td className="p-6">
+                          <div className="font-bold text-slate-800 text-lg mb-1 flex items-center gap-2 group-hover:text-teal-600 transition-colors">
+                            {b.title}
+                          </div>
+                          <div className="text-sm font-medium text-slate-500 flex items-center gap-2"><MapPin size={14} className="text-rose-400"/> {b.destination} <span className="text-slate-300">•</span> ผู้จอง: {b.requesterName}</div>
+                          {b.attachment && b.attachment !== 'Error uploading file' && (
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                if(b.attachment.startsWith('data:')) alert('ไฟล์กำลังประมวลผล กรุณารีเฟรชหน้าเว็บอีกครั้ง'); 
+                                else window.open(b.attachment, '_blank'); 
+                              }} 
+                              className="text-indigo-500 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded-lg transition-colors mt-2 w-max"
+                            >
+                               <FileText size={14}/> เปิดเอกสารแนบ
+                            </button>
+                          )}
+                        </td>
+                        <td className="p-6 text-base font-bold text-teal-700">
+                           {car?.plate}
+                           {b.selfDrive && <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">ขับเอง</span>}
+                        </td>
+                        <td className="p-6">
+                          <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
+                          <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
+                        </td>
+                        <td className="p-6"><StatusBadge status={b.status} type="booking" /></td>
+                        <td className="p-6 text-center">
+                          <button onClick={(e) => { e.stopPropagation(); viewDetails(b); }} className="px-4 py-2 text-sm font-bold text-teal-600 bg-teal-50 hover:bg-teal-600 hover:text-white rounded-xl transition-all">ดูรายละเอียด</button>
+                        </td>
+                      </tr>
+                    )})}
+                    {carBookings.length === 0 && (
+                      <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการจอง</td></tr>
+                    )}
+                  </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }) => {
+  const [view, setView] = useState('menu'); 
+  const [cart, setCart] = useState({});
+  const [formData, setFormData] = useState({ 
+    requesterName: user.name || '', requesterPhone: '', location: '', note: '', 
+    deliveryTime: '', timeSlot: ['อาหารกลางวัน'], cateringType: 'สั่งปกติ (A-la-carte)', pax: 1 
+  });
+  const [activeCategory, setActiveCategory] = useState('all');
+
+  const totalCartItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+
+  const updateCart = (foodId, delta) => {
+    const currentQty = cart[foodId] || 0;
+    const food = foods.find(f => f.id === foodId);
+    let newQty = currentQty + delta;
+    if (newQty > food.maxQuantity) newQty = food.maxQuantity;
+    
+    setCart(prev => {
+      const updated = { ...prev };
+      if (newQty <= 0) {
+        delete updated[foodId];
+      } else {
+        updated[foodId] = newQty;
+      }
+      return updated;
+    });
+  };
+
+  const getBasePrice = () => Object.keys(cart).reduce((sum, id) => sum + (foods.find(f => f.id === id).price * cart[id]), 0);
+  const getMultiplier = () => formData.cateringType === 'สั่งปกติ (A-la-carte)' ? 1 : formData.pax;
+
+  const handleOrder = (e) => {
+    e.preventDefault();
+    if(totalCartItems === 0) return;
+
+    const orderItems = Object.keys(cart).map(foodId => {
+      const food = foods.find(f => f.id === foodId);
+      return { id: foodId, name: food.name, price: food.price, qty: cart[foodId] };
+    });
+    const totalPrice = getBasePrice() * getMultiplier();
+
+    const newOrder = {
+      id: 'fo' + Date.now(),
+      itemsString: JSON.stringify(orderItems),
+      totalPrice,
+      ...formData,
+      timeSlot: Array.isArray(formData.timeSlot) ? formData.timeSlot.join(', ') : formData.timeSlot,
+      status: 'pending',
+      createdBy: user.id,
+      createdAt: new Date().toISOString()
+    };
+    
+    setFoodOrders([newOrder, ...foodOrders]);
+    syncToGoogleSheet('addFoodOrder', newOrder);
+    setCart({});
+    setView('my_orders');
+    setFormData({ requesterName: user.name || '', requesterPhone: '', location: '', note: '', deliveryTime: '', timeSlot: ['อาหารกลางวัน'], cateringType: 'สั่งปกติ (A-la-carte)', pax: 1 });
+  };
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col xl:flex-row xl:justify-between xl:items-center gap-6">
+        <h2 className="text-3xl font-black text-slate-800 tracking-tight">ระบบสั่งอาหาร/เครื่องดื่ม</h2>
+        <div className="flex bg-slate-200/60 p-1.5 rounded-2xl shadow-inner w-max">
+          <button onClick={() => setView('menu')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'menu' ? 'bg-white shadow-sm text-amber-600 scale-100' : 'text-slate-500 hover:text-slate-800'}`}>เมนูอาหาร</button>
+          <button onClick={() => setView('cart')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all relative ${view === 'cart' ? 'bg-white shadow-sm text-amber-600' : 'text-slate-500 hover:text-slate-800'}`}>
+            ตะกร้าสินค้า
+            {totalCartItems > 0 && <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full animate-pulse">{totalCartItems}</span>}
+          </button>
+          <button onClick={() => setView('my_orders')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'my_orders' ? 'bg-white shadow-sm text-amber-600' : 'text-slate-500 hover:text-slate-800'}`}>ออเดอร์ของฉัน</button>
+        </div>
+      </div>
+
+      {view === 'menu' && (
+        <div className="space-y-6">
+          <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pt-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+             <button onClick={() => setActiveCategory('all')} className={`whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${activeCategory === 'all' ? 'bg-amber-500 text-white shadow-md shadow-amber-200 scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>ทั้งหมด</button>
+             {foodCategories.map(cat => (
+               <button key={cat.id} onClick={() => setActiveCategory(cat.name)} className={`whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${activeCategory === cat.name ? 'bg-amber-500 text-white shadow-md shadow-amber-200 scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>
+                 {cat.name}
+               </button>
+             ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+            {foods.filter(f => activeCategory === 'all' || f.category === activeCategory).map(food => {
+               const qtyInCart = cart[food.id] || 0;
+               return (
+                <div key={food.id} className="bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col group hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300">
+                  <div className="relative overflow-hidden h-48 bg-slate-100">
+                    {food.image && food.image !== 'Error uploading image' ? (
+                       <img 
+                         src={food.image.includes('drive.google.com') ? `https://drive.google.com/thumbnail?id=${food.image.match(/\/d\/(.+?)\//)?.[1] || food.image.match(/id=(.+?)$/)?.[1]}&sz=w800` : food.image} 
+                         alt={food.name} 
+                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                         onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/600x400/f8fafc/64748b?text=Food+Image'; }}
+                       />
+                    ) : (
+                       <div className="w-full h-full flex items-center justify-center text-slate-300"><Utensils size={48}/></div>
+                    )}
+                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-slate-800 font-black px-3 py-1.5 rounded-xl shadow-sm">
+                      ฿{food.price}
+                    </div>
+                  </div>
+                  <div className="p-6 flex-1 flex flex-col">
+                    <div className="mb-6 flex-1">
+                      <h3 className="text-xl font-black text-slate-800 leading-tight mb-2">{food.name}</h3>
+                      <p className="text-sm font-medium text-slate-500">จำนวนที่สามารถสั่งได้: {food.maxQuantity} รายการ</p>
+                    </div>
+                    <div className="flex items-center justify-between bg-slate-50 rounded-2xl p-2 border border-slate-100">
+                       {qtyInCart === 0 ? (
+                         <button onClick={() => updateCart(food.id, 1)} className="w-full bg-amber-100 text-amber-700 font-bold py-3 rounded-xl hover:bg-amber-200 active:scale-95 transition-all flex justify-center items-center gap-2">
+                           <Plus size={18}/> เพิ่มลงตะกร้า
+                         </button>
+                       ) : (
+                         <div className="w-full flex items-center justify-between px-2">
+                           <button onClick={() => updateCart(food.id, -1)} className="w-10 h-10 bg-white rounded-xl shadow-sm text-slate-600 hover:text-rose-500 flex items-center justify-center active:scale-95 transition-all"><Minus size={18}/></button>
+                           <span className="font-black text-lg text-slate-800 w-12 text-center">{qtyInCart}</span>
+                           <button onClick={() => updateCart(food.id, 1)} className="w-10 h-10 bg-white rounded-xl shadow-sm text-slate-600 hover:text-emerald-500 flex items-center justify-center active:scale-95 transition-all"><Plus size={18}/></button>
+                         </div>
+                       )}
+                    </div>
+                  </div>
+                </div>
+               );
+            })}
+          </div>
+        </div>
+      )}
+
+      {view === 'cart' && (
+        <div className="max-w-3xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
+          <form onSubmit={handleOrder} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white">
+            <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-6">
+              <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl"><ShoppingCart size={24}/></div>
+              <h3 className="text-2xl font-black text-slate-800">สรุปรายการอาหาร</h3>
+            </div>
+            
+            {totalCartItems === 0 ? (
+              <div className="text-center py-12">
+                 <ShoppingCart size={48} className="mx-auto text-slate-200 mb-4" />
+                 <p className="text-lg font-bold text-slate-400">ยังไม่มีรายการอาหารในตะกร้า</p>
+                 <button type="button" onClick={() => setView('menu')} className="mt-6 px-6 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold hover:bg-amber-200 transition-colors">กลับไปเลือกเมนู</button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-slate-700 ml-1">รูปแบบการสั่ง</label>
+                    <select value={formData.cateringType} onChange={e => setFormData({...formData, cateringType: e.target.value})} className="w-full p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl focus:bg-white focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-bold">
+                       <option value="สั่งปกติ (A-la-carte)">สั่งแยกปกติ (A-la-carte)</option>
+                       <option value="จัดเป็นชุด (Set Box)">จัดอาหารเป็นชุด (Set Box)</option>
+                       <option value="จัดแบบบุฟเฟ่ต์ (Buffet)">จัดแบบบุฟเฟ่ต์ (Buffet)</option>
+                    </select>
+                  </div>
+                  {formData.cateringType !== 'สั่งปกติ (A-la-carte)' && (
+                    <div className="space-y-2 animate-in fade-in zoom-in duration-300">
+                      <label className="block text-sm font-bold text-slate-700 ml-1">จำนวนคน (ท่าน)</label>
+                      <input required type="number" min="1" className="w-full p-4 bg-white border border-amber-200 rounded-2xl focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-bold text-amber-600"
+                        value={formData.pax} onChange={e => setFormData({...formData, pax: parseInt(e.target.value) || 1})} />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4 mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                   {Object.keys(cart).map(foodId => {
+                      const food = foods.find(f => f.id === foodId);
+                      const qty = cart[foodId];
+                      return (
+                         <div key={foodId} className="flex justify-between items-center border-b border-slate-200/60 pb-3 last:border-0 last:pb-0">
+                            <div>
+                               <p className="font-bold text-slate-800 text-base">{food.name}</p>
+                               <p className="text-sm font-medium text-slate-500">{food.price} ฿ {formData.cateringType === 'สั่งปกติ (A-la-carte)' && `x ${qty}`}</p>
+                            </div>
+                            <div className="font-black text-lg text-slate-800">
+                               {formData.cateringType === 'สั่งปกติ (A-la-carte)' ? food.price * qty : food.price} ฿
+                            </div>
+                         </div>
+                      )
+                   })}
+                   <div className="flex justify-between items-center pt-4 border-t-2 border-slate-200 border-dashed mt-4">
+                      <p className="font-bold text-slate-600 text-lg">ราคารวมสุทธิ</p>
+                      <div className="text-right">
+                        {formData.cateringType !== 'สั่งปกติ (A-la-carte)' && (
+                           <p className="text-sm font-bold text-slate-500 mb-1">{getBasePrice()} ฿ x {formData.pax} ท่าน</p>
+                        )}
+                        <p className="font-black text-4xl text-amber-600">{getBasePrice() * getMultiplier()} ฿</p>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-slate-700 ml-1">ชื่อ-นามสกุล ผู้สั่ง</label>
+                    <input required type="text" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium"
+                      value={formData.requesterName} onChange={e => setFormData({...formData, requesterName: e.target.value})} placeholder="ระบุชื่อของคุณ" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-slate-700 ml-1">เบอร์โทรศัพท์</label>
+                    <input required type="tel" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium"
+                      value={formData.requesterPhone} onChange={e => setFormData({...formData, requesterPhone: e.target.value})} placeholder="08X-XXX-XXXX" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-slate-700 ml-1">สถานที่จัดส่ง / รับอาหาร</label>
+                  <input required type="text" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium"
+                    value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} placeholder="เช่น ห้องพักครูหมวดวิทย์, มารับเอง" />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="space-y-2">
+                     <label className="block text-sm font-bold text-slate-700 ml-1">วันที่ต้องการรับอาหาร</label>
+                     <input required type="date" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium"
+                       value={formData.deliveryTime} onChange={e => setFormData({...formData, deliveryTime: e.target.value})} />
+                   </div>
+                   <div className="space-y-2">
+                     <label className="block text-sm font-bold text-slate-700 ml-1">ช่วงเวลาที่รับบริการ (เลือกได้มากกว่า 1)</label>
+                     <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl grid grid-cols-2 gap-4">
+                        {['เบรคเช้า', 'อาหารกลางวัน', 'เบรคช่วงบ่าย', 'อื่นๆ'].map(slot => (
+                           <label key={slot} className="flex items-center gap-3 text-sm font-bold text-slate-700 cursor-pointer select-none">
+                              <input 
+                                 type="checkbox" 
+                                 className="w-5 h-5 accent-amber-500 rounded border-slate-300"
+                                 checked={Array.isArray(formData.timeSlot) && formData.timeSlot.includes(slot)}
+                                 onChange={(e) => {
+                                    let newSlots = Array.isArray(formData.timeSlot) ? [...formData.timeSlot] : [];
+                                    if (e.target.checked) newSlots.push(slot);
+                                    else newSlots = newSlots.filter(s => s !== slot);
+                                    setFormData({...formData, timeSlot: newSlots});
+                                 }}
+                              />
+                              {slot}
+                           </label>
+                        ))}
+                     </div>
+                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-slate-700 ml-1">หมายเหตุเพิ่มเติม</label>
+                  <textarea rows="2" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium resize-none"
+                    value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} placeholder="เช่น ไม่เผ็ด, ไม่ใส่ผักชี (ไม่บังคับ)"></textarea>
+                </div>
+                <div className="pt-6 flex gap-4">
+                  <button type="submit" className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-amber-200 hover:shadow-2xl active:scale-[0.98] transition-all">ยืนยันการสั่งอาหาร</button>
+                </div>
+              </div>
+            )}
+          </form>
+        </div>
+      )}
+
+      {view === 'my_orders' && (
         <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
           <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             <table className="w-full text-left border-collapse min-w-[800px]">
                <thead>
                   <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
-                    <th className="p-6 font-bold uppercase tracking-wider">เรื่อง / ปลายทาง</th>
-                    <th className="p-6 font-bold uppercase tracking-wider">รถ</th>
-                    <th className="p-6 font-bold uppercase tracking-wider">เวลาเดินทาง</th>
+                    <th className="p-6 font-bold uppercase tracking-wider w-1/3">รายการอาหาร</th>
+                    <th className="p-6 font-bold uppercase tracking-wider">วันเวลา/สถานที่</th>
+                    <th className="p-6 font-bold uppercase tracking-wider text-center">ราคารวม</th>
                     <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
-                    <th className="p-6 font-bold uppercase tracking-wider text-center">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/80">
-                  {carBookings.map(b => {
-                    const car = cars.find(c => c.id === b.carId);
+                  {foodOrders.filter(b => user.role === 'admin' || b.createdBy === user.id || b.createdBy === 'guest').map(b => {
+                    let parsedItems = [];
+                    try { parsedItems = JSON.parse(b.itemsString); } catch(e){}
                     return (
-                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => viewDetails(b)}>
+                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="p-6">
-                        <div className="font-bold text-slate-800 text-lg mb-1 flex items-center gap-2 group-hover:text-teal-600 transition-colors">
-                          {b.title}
+                        <div className="mb-2">
+                           <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded-lg">{b.cateringType || 'สั่งปกติ (A-la-carte)'}</span>
                         </div>
-                        <div className="text-sm font-medium text-slate-500 flex items-center gap-2"><MapPin size={14} className="text-rose-400"/> {b.destination} <span className="text-slate-300">•</span> ผู้จอง: {b.requesterName}</div>
-                        {b.attachment && b.attachment !== 'Error uploading file' && (
-                          <button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              if(b.attachment.startsWith('data:')) alert('ไฟล์กำลังประมวลผล กรุณารีเฟรชหน้าเว็บอีกครั้ง'); 
-                              else window.open(b.attachment, '_blank'); 
-                            }} 
-                            className="text-indigo-500 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded-lg transition-colors mt-2 w-max"
-                          >
-                             <FileText size={14}/> เปิดเอกสารแนบ
-                          </button>
-                        )}
+                        <div className="font-bold text-slate-800 text-base mb-2 space-y-1">
+                           {parsedItems.map((item, idx) => (
+                              <div key={idx} className="flex justify-between">
+                                 <span>- {item.name}</span>
+                                 {b.cateringType === 'สั่งปกติ (A-la-carte)' && <span className="text-slate-500 text-sm">x{item.qty}</span>}
+                              </div>
+                           ))}
+                        </div>
+                        <div className="text-xs font-medium text-slate-500 mt-3 pt-2 border-t border-slate-200 border-dashed">
+                           ทำรายการเมื่อ: {new Date(b.createdAt).toLocaleString('th-TH')}
+                        </div>
                       </td>
-                      <td className="p-6 text-base font-bold text-teal-700">{car?.plate}</td>
                       <td className="p-6">
-                        <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
-                        <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
+                        <div className="text-sm font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-lg inline-block mb-2">
+                           รับวันที่: {b.deliveryTime ? new Date(b.deliveryTime).toLocaleDateString('th-TH') : 'ไม่ระบุ'} ({b.timeSlot || 'ไม่ระบุ'})
+                        </div>
+                        <div className="font-bold text-slate-700 text-sm mb-1"><MapPin size={14} className="inline text-rose-400 mr-1"/> {b.location}</div>
+                        <div className="text-xs text-slate-500 font-medium">ชื่อ: {b.requesterName}</div>
+                        {b.note && <div className="text-xs text-amber-600 font-medium mt-1 bg-amber-50 p-1.5 rounded-lg inline-block">หมายเหตุ: {b.note}</div>}
                       </td>
-                      <td className="p-6"><StatusBadge status={b.status} type="booking" /></td>
                       <td className="p-6 text-center">
-                        <button onClick={(e) => { e.stopPropagation(); viewDetails(b); }} className="px-4 py-2 text-sm font-bold text-teal-600 bg-teal-50 hover:bg-teal-600 hover:text-white rounded-xl transition-all">ดูรายละเอียด</button>
+                        <div className="text-xl font-black text-amber-600">{b.totalPrice} ฿</div>
+                        {b.cateringType !== 'สั่งปกติ (A-la-carte)' && <div className="text-xs text-slate-500 font-medium mt-1">สำหรับ {b.pax} ท่าน</div>}
                       </td>
+                      <td className="p-6"><StatusBadge status={b.status} type="order" /></td>
                     </tr>
                   )})}
-                  {carBookings.length === 0 && (
-                    <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการจอง</td></tr>
+                  {foodOrders.length === 0 && (
+                    <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการสั่งอาหาร</td></tr>
                   )}
                 </tbody>
             </table>
@@ -1425,9 +1565,19 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
   );
 };
 
-// --- Approvals System (Admin Only) ---
-const Approvals = ({ roomBookings, setRoomBookings, carBookings, setCarBookings, foodOrders, setFoodOrders, rooms, cars }) => {
-  const [tab, setTab] = useState('rooms'); 
+const Approvals = ({ user, roomBookings, setRoomBookings, carBookings, setCarBookings, foodOrders, setFoodOrders, rooms, cars }) => {
+  const [tab, setTab] = useState(''); 
+
+  const allowedTabs = [];
+  if (user.permissions?.includes('all') || user.permissions?.includes('rooms')) allowedTabs.push('rooms');
+  if (user.permissions?.includes('all') || user.permissions?.includes('cars')) allowedTabs.push('cars');
+  if (user.permissions?.includes('all') || user.permissions?.includes('foods')) allowedTabs.push('foods');
+
+  useEffect(() => {
+    if (!allowedTabs.includes(tab) && allowedTabs.length > 0) {
+      setTab(allowedTabs[0]);
+    }
+  }, [user, tab, allowedTabs]);
 
   const updateStatus = (list, setList, id, newStatus) => {
     setList(list.map(item => item.id === id ? { ...item, status: newStatus } : item));
@@ -1436,20 +1586,30 @@ const Approvals = ({ roomBookings, setRoomBookings, carBookings, setCarBookings,
     if (tab === 'foods') syncToGoogleSheet('updateFoodOrderStatus', { id, status: newStatus });
   };
 
+  if (allowedTabs.length === 0) {
+    return <div className="p-12 text-center text-slate-400 font-bold text-lg">ท่านไม่มีสิทธิ์ในการเข้าถึงระบบอนุมัติส่วนนี้</div>;
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <h2 className="text-3xl font-black text-slate-800 tracking-tight">ระบบอนุมัติการจอง</h2>
       
       <div className="flex gap-4 border-b border-slate-200 mb-6 flex-wrap">
-        <button onClick={() => setTab('rooms')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'rooms' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>
-          การจองห้องประชุม <span className="ml-2 bg-indigo-100 text-indigo-700 py-0.5 px-2.5 rounded-full text-xs">{roomBookings.filter(b=>b.status==='pending').length}</span>
-        </button>
-        <button onClick={() => setTab('cars')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'cars' ? 'text-teal-600 border-teal-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>
-          การจองรถโรงเรียน <span className="ml-2 bg-teal-100 text-teal-700 py-0.5 px-2.5 rounded-full text-xs">{carBookings.filter(b=>b.status==='pending').length}</span>
-        </button>
-        <button onClick={() => setTab('foods')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'foods' ? 'text-amber-600 border-amber-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>
-          ออเดอร์สั่งอาหาร <span className="ml-2 bg-amber-100 text-amber-700 py-0.5 px-2.5 rounded-full text-xs">{foodOrders.filter(b=>b.status==='pending').length}</span>
-        </button>
+        {allowedTabs.includes('rooms') && (
+          <button onClick={() => setTab('rooms')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'rooms' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>
+            การจองห้องประชุม <span className="ml-2 bg-indigo-100 text-indigo-700 py-0.5 px-2.5 rounded-full text-xs">{roomBookings.filter(b=>b.status==='pending').length}</span>
+          </button>
+        )}
+        {allowedTabs.includes('cars') && (
+          <button onClick={() => setTab('cars')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'cars' ? 'text-teal-600 border-teal-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>
+            การจองรถโรงเรียน <span className="ml-2 bg-teal-100 text-teal-700 py-0.5 px-2.5 rounded-full text-xs">{carBookings.filter(b=>b.status==='pending').length}</span>
+          </button>
+        )}
+        {allowedTabs.includes('foods') && (
+          <button onClick={() => setTab('foods')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'foods' ? 'text-amber-600 border-amber-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>
+            ออเดอร์สั่งอาหาร <span className="ml-2 bg-amber-100 text-amber-700 py-0.5 px-2.5 rounded-full text-xs">{foodOrders.filter(b=>b.status==='pending').length}</span>
+          </button>
+        )}
       </div>
 
       <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
@@ -1510,7 +1670,8 @@ const Approvals = ({ roomBookings, setRoomBookings, carBookings, setCarBookings,
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              window.open(b.attachment, '_blank');
+                              if(b.attachment.startsWith('data:')) alert('กำลังประมวลผลไฟล์ กรุณารอซักครู่');
+                              else window.open(b.attachment, '_blank');
                             }} 
                             className="text-indigo-500 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1.5 rounded-lg transition-colors mt-1 w-max"
                           >
@@ -1519,7 +1680,10 @@ const Approvals = ({ roomBookings, setRoomBookings, carBookings, setCarBookings,
                         )}
                       </div>
                     </td>
-                    <td className="p-6 text-base font-bold text-teal-700">{car?.plate}</td>
+                    <td className="p-6 text-base font-bold text-teal-700">
+                       {car?.plate}
+                       {b.selfDrive && <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">ขับเอง</span>}
+                    </td>
                     <td className="p-6">
                       <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
                       <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
@@ -1549,6 +1713,9 @@ const Approvals = ({ roomBookings, setRoomBookings, carBookings, setCarBookings,
                  return (
                   <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="p-6">
+                      <div className="mb-2">
+                         <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded-lg">{b.cateringType || 'สั่งปกติ (A-la-carte)'}</span>
+                      </div>
                       <div className="font-bold text-slate-800 text-sm mb-1 space-y-1">
                          {parsedItems.map((item, idx) => (
                             <div key={idx} className="flex gap-2">
@@ -1559,6 +1726,9 @@ const Approvals = ({ roomBookings, setRoomBookings, carBookings, setCarBookings,
                       <div className="text-xs font-bold text-amber-600 mt-2 bg-amber-50 p-1.5 rounded inline-block">รวม {b.totalPrice} ฿</div>
                     </td>
                     <td className="p-6">
+                      <div className="text-sm font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-lg inline-block mb-1">
+                         รับวันที่: {b.deliveryTime ? new Date(b.deliveryTime).toLocaleDateString('th-TH') : 'ไม่ระบุ'} ({b.timeSlot || 'ไม่ระบุ'})
+                      </div>
                       <div className="text-sm font-bold text-slate-700 mb-1">{b.location}</div>
                       <div className="text-sm font-medium text-slate-500">โดย: {b.requesterName} {b.requesterPhone && <span className="text-slate-400 ml-1">({b.requesterPhone})</span>}</div>
                       {b.note && <div className="text-xs text-rose-500 mt-1">หมายเหตุ: {b.note}</div>}
@@ -1597,9 +1767,20 @@ const Approvals = ({ roomBookings, setRoomBookings, carBookings, setCarBookings,
   );
 };
 
-// --- Reports System (Admin Only) ---
-const Reports = ({ tickets, roomBookings, carBookings, foodOrders, rooms, cars, foods, categories }) => {
-  const [tab, setTab] = useState('helpdesk');
+const Reports = ({ user, tickets, roomBookings, carBookings, foodOrders, rooms, cars, foods, categories }) => {
+  const [tab, setTab] = useState('');
+
+  const allowedTabs = [];
+  if (user.permissions?.includes('all') || user.permissions?.includes('helpdesk')) allowedTabs.push('helpdesk');
+  if (user.permissions?.includes('all') || user.permissions?.includes('rooms')) allowedTabs.push('rooms');
+  if (user.permissions?.includes('all') || user.permissions?.includes('cars')) allowedTabs.push('cars');
+  if (user.permissions?.includes('all') || user.permissions?.includes('foods')) allowedTabs.push('foods');
+
+  useEffect(() => {
+    if (!allowedTabs.includes(tab) && allowedTabs.length > 0) {
+      setTab(allowedTabs[0]);
+    }
+  }, [user, tab, allowedTabs]);
 
   const totalTickets = tickets.length;
   const completedTickets = tickets.filter(t => t.status === 'completed').length;
@@ -1616,9 +1797,7 @@ const Reports = ({ tickets, roomBookings, carBookings, foodOrders, rooms, cars, 
   const approvedFoods = foodOrders.filter(b => b.status === 'approved').length;
   const pendingFoods = foodOrders.filter(b => b.status === 'pending').length;
 
-  const handleExportPDF = () => {
-    window.print();
-  };
+  const handleExportPDF = () => window.print();
 
   const handleExportExcel = () => {
     let dataToExport = [];
@@ -1655,6 +1834,7 @@ const Reports = ({ tickets, roomBookings, carBookings, foodOrders, rooms, cars, 
         'เวลาไป': new Date(b.startTime).toLocaleString('th-TH'),
         'เวลากลับ': new Date(b.endTime).toLocaleString('th-TH'),
         'จำนวนผู้โดยสาร': b.passengers,
+        'คนขับ': b.selfDrive ? 'ขับเอง' : cars.find(c => c.id === b.carId)?.driver || 'N/A',
         'สถานะ': b.status === 'approved' ? 'อนุมัติแล้ว' : b.status === 'pending' ? 'รออนุมัติ' : b.status === 'rejected' ? 'ไม่อนุมัติ' : 'ยกเลิก'
       }));
     } else if (tab === 'foods') {
@@ -1664,6 +1844,9 @@ const Reports = ({ tickets, roomBookings, carBookings, foodOrders, rooms, cars, 
         'ผู้สั่ง': b.requesterName,
         'เบอร์โทร': b.requesterPhone,
         'สถานที่จัดส่ง': b.location,
+        'เวลาที่ต้องการรับ': b.deliveryTime ? new Date(b.deliveryTime).toLocaleString('th-TH') : 'ไม่ระบุ',
+        'รูปแบบ': b.cateringType || 'A-la-carte',
+        'จำนวนคน': b.pax || 1,
         'ราคารวม': b.totalPrice,
         'เวลาสั่ง': new Date(b.createdAt).toLocaleString('th-TH'),
         'สถานะ': b.status === 'approved' ? 'เสร็จสิ้น' : b.status === 'pending' ? 'รอรับออเดอร์' : 'ยกเลิก'
@@ -1689,6 +1872,10 @@ const Reports = ({ tickets, roomBookings, carBookings, foodOrders, rooms, cars, 
     document.body.removeChild(link);
   };
 
+  if (allowedTabs.length === 0) {
+    return <div className="p-12 text-center text-slate-400 font-bold text-lg">ท่านไม่มีสิทธิ์ในการเข้าถึงรายงานสรุปผล</div>;
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10 print:p-0 print:space-y-4">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -1704,10 +1891,10 @@ const Reports = ({ tickets, roomBookings, carBookings, foodOrders, rooms, cars, 
       </div>
       
       <div className="flex gap-4 border-b border-slate-200 mb-6 print:hidden flex-wrap">
-        <button onClick={() => setTab('helpdesk')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'helpdesk' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>รายงานแจ้งซ่อม</button>
-        <button onClick={() => setTab('rooms')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'rooms' ? 'text-blue-600 border-blue-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>รายงานจองห้องประชุม</button>
-        <button onClick={() => setTab('cars')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'cars' ? 'text-teal-600 border-teal-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>รายงานจองรถโรงเรียน</button>
-        <button onClick={() => setTab('foods')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'foods' ? 'text-amber-600 border-amber-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>รายงานสั่งอาหาร</button>
+        {allowedTabs.includes('helpdesk') && <button onClick={() => setTab('helpdesk')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'helpdesk' ? 'text-indigo-600 border-indigo-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>รายงานแจ้งซ่อม</button>}
+        {allowedTabs.includes('rooms') && <button onClick={() => setTab('rooms')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'rooms' ? 'text-blue-600 border-blue-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>รายงานจองห้องประชุม</button>}
+        {allowedTabs.includes('cars') && <button onClick={() => setTab('cars')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'cars' ? 'text-teal-600 border-teal-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>รายงานจองรถโรงเรียน</button>}
+        {allowedTabs.includes('foods') && <button onClick={() => setTab('foods')} className={`pb-4 px-2 font-bold text-base transition-all border-b-4 ${tab === 'foods' ? 'text-amber-600 border-amber-600' : 'text-slate-400 border-transparent hover:text-slate-600'}`}>รายงานสั่งอาหาร</button>}
       </div>
 
       <div className="hidden print:block mb-6">
@@ -1799,18 +1986,23 @@ const Reports = ({ tickets, roomBookings, carBookings, foodOrders, rooms, cars, 
   );
 };
 
-
 // --- Settings (Admin Only) ---
 const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCars, foodCategories, setFoodCategories, foods, setFoods, admins, setAdmins, loggedInUser }) => {
   const [newCategory, setNewCategory] = useState('');
   const [newFoodCategory, setNewFoodCategory] = useState('');
-  const [newRoom, setNewRoom] = useState({ name: '', capacity: '', equipment: '', image: '' });
-  const [newCar, setNewCar] = useState({ plate: '', type: 'รถตู้', capacity: '', driver: '', image: '' });
+  const [newRoom, setNewRoom] = useState({ name: '', capacity: '', equipment: '', image: null });
+  const [newCar, setNewCar] = useState({ plate: '', type: 'รถตู้', capacity: '', driver: '', driverPhone: '', image: null });
   const [newFood, setNewFood] = useState({ name: '', price: '', maxQuantity: '', category: foodCategories[0]?.name || '', image: null });
-  const [newAdmin, setNewAdmin] = useState({ username: '', password: '', name: '' });
+  const [newAdmin, setNewAdmin] = useState({ username: '', password: '', name: '', permissions: [] });
   
   const [pwdForm, setPwdForm] = useState({ old: '', new: '', confirm: '' });
   const [pwdMsg, setPwdMsg] = useState('');
+
+  const canManageAll = loggedInUser.permissions?.includes('all');
+  const canManageHelpdesk = canManageAll || loggedInUser.permissions?.includes('helpdesk');
+  const canManageRooms = canManageAll || loggedInUser.permissions?.includes('rooms');
+  const canManageCars = canManageAll || loggedInUser.permissions?.includes('cars');
+  const canManageFoods = canManageAll || loggedInUser.permissions?.includes('foods');
 
   const handleAddCategory = () => {
     if (!newCategory) return;
@@ -1827,17 +2019,34 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
     setNewFoodCategory('');
   };
 
+  const handleRoomImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setNewRoom({ ...newRoom, image: reader.result });
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddRoom = () => {
     if (!newRoom.name) return;
     const roomObj = { 
       id: 'r' + Date.now(), 
       ...newRoom, 
-      status: 'ready', 
-      image: newRoom.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=300&q=80' 
+      status: 'ready'
     };
     setRooms([...rooms, roomObj]);
     syncToGoogleSheet('addRoom', roomObj);
-    setNewRoom({ name: '', capacity: '', equipment: '', image: '' });
+    setNewRoom({ name: '', capacity: '', equipment: '', image: null });
+  };
+
+  const handleCarImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setNewCar({ ...newCar, image: reader.result });
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleAddCar = () => {
@@ -1845,12 +2054,11 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
     const carObj = { 
       id: 'c' + Date.now(), 
       ...newCar, 
-      status: 'ready',
-      image: newCar.image || 'https://images.unsplash.com/photo-1549317661-bd32c8ce0be2?auto=format&fit=crop&w=300&q=80'
+      status: 'ready'
     };
     setCars([...cars, carObj]);
     syncToGoogleSheet('addCar', carObj);
-    setNewCar({ plate: '', type: 'รถตู้', capacity: '', driver: '', image: '' });
+    setNewCar({ plate: '', type: 'รถตู้', capacity: '', driver: '', driverPhone: '', image: null });
   };
 
   const handleFoodImageUpload = (e) => {
@@ -1876,12 +2084,27 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
     setNewFood({ name: '', price: '', maxQuantity: '', category: foodCategories[0]?.name || '', image: null });
   };
 
+  const handlePermissionChange = (val) => {
+     if (val === 'all') {
+         setNewAdmin({...newAdmin, permissions: ['all']});
+     } else {
+         let perms = newAdmin.permissions.filter(p => p !== 'all');
+         if (perms.includes(val)) {
+             perms = perms.filter(p => p !== val);
+         } else {
+             perms.push(val);
+         }
+         setNewAdmin({...newAdmin, permissions: perms});
+     }
+  };
+
   const handleAddAdmin = () => {
     if (!newAdmin.username || !newAdmin.password) return;
-    const adminObj = { id: 'a' + Date.now(), ...newAdmin };
+    const permissionsString = newAdmin.permissions.length > 0 ? newAdmin.permissions.join(',') : 'all';
+    const adminObj = { id: 'a' + Date.now(), ...newAdmin, permissions: permissionsString };
     setAdmins([...admins, adminObj]);
     syncToGoogleSheet('addAdmin', adminObj);
-    setNewAdmin({ username: '', password: '', name: '' });
+    setNewAdmin({ username: '', password: '', name: '', permissions: [] });
   };
 
   const handleDeleteAdmin = (id) => {
@@ -1932,193 +2155,227 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
           </form>
         </div>
 
-        {/* จัดการ Admin */}
-        <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
-          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-             <div className="p-2 bg-rose-50 text-rose-600 rounded-xl"><ShieldAlert size={20}/></div>
-             <h3 className="text-xl font-bold text-slate-800">จัดการรายชื่อผู้ดูแลระบบ</h3>
-          </div>
-          <ul className="space-y-3 mb-6 max-h-40 overflow-y-auto pr-2 hide-scrollbar">
-            {admins.map(a => (
-              <li key={a.id} className="flex justify-between items-center p-3.5 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
-                <div>
-                  <span className="text-sm font-bold text-slate-800 block">{a.name}</span>
-                  <span className="text-xs font-medium text-slate-500">Username: {a.username}</span>
-                </div>
-                {a.id !== loggedInUser.id && (
-                  <button onClick={() => handleDeleteAdmin(a.id)} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all"><X size={16}/></button>
-                )}
-              </li>
-            ))}
-          </ul>
-          <div className="space-y-3 pt-4 border-t border-slate-100">
-            <p className="text-sm font-black text-slate-700 uppercase tracking-widest">เพิ่มผู้ดูแลระบบ</p>
-            <input type="text" value={newAdmin.name} onChange={e => setNewAdmin({...newAdmin, name: e.target.value})} placeholder="ชื่อ - นามสกุล" className="w-full p-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-rose-500/20 outline-none font-medium text-sm transition-all" />
-            <div className="flex gap-3">
-              <input type="text" value={newAdmin.username} onChange={e => setNewAdmin({...newAdmin, username: e.target.value})} placeholder="Username" className="flex-1 p-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-rose-500/20 outline-none font-medium text-sm transition-all" />
-              <input type="text" value={newAdmin.password} onChange={e => setNewAdmin({...newAdmin, password: e.target.value})} placeholder="Password" className="flex-1 p-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-rose-500/20 outline-none font-medium text-sm transition-all" />
+        {/* จัดการ Admin (Only Super Admin) */}
+        {canManageAll && (
+          <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
+            <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+               <div className="p-2 bg-rose-50 text-rose-600 rounded-xl"><ShieldAlert size={20}/></div>
+               <h3 className="text-xl font-bold text-slate-800">จัดการรายชื่อผู้ดูแลระบบ</h3>
             </div>
-            <button onClick={handleAddAdmin} className="w-full mt-2 px-4 py-3 bg-rose-600 text-white rounded-2xl font-bold text-sm hover:bg-rose-700 shadow-md active:scale-95 transition-all">บันทึก Admin ใหม่</button>
+            <ul className="space-y-3 mb-6 max-h-40 overflow-y-auto pr-2 hide-scrollbar">
+              {admins.map(a => (
+                <li key={a.id} className="flex justify-between items-center p-3.5 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
+                  <div>
+                    <span className="text-sm font-bold text-slate-800 block">{a.name}</span>
+                    <span className="text-xs font-medium text-slate-500">Username: {a.username}</span>
+                  </div>
+                  {a.id !== loggedInUser.id && (
+                    <button onClick={() => handleDeleteAdmin(a.id)} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all"><X size={16}/></button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <p className="text-sm font-black text-slate-700 uppercase tracking-widest">เพิ่มผู้ดูแลระบบ</p>
+              <input type="text" value={newAdmin.name} onChange={e => setNewAdmin({...newAdmin, name: e.target.value})} placeholder="ชื่อ - นามสกุล" className="w-full p-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-rose-500/20 outline-none font-medium text-sm transition-all" />
+              <div className="flex gap-3">
+                <input type="text" value={newAdmin.username} onChange={e => setNewAdmin({...newAdmin, username: e.target.value})} placeholder="Username" className="flex-1 p-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-rose-500/20 outline-none font-medium text-sm transition-all" />
+                <input type="text" value={newAdmin.password} onChange={e => setNewAdmin({...newAdmin, password: e.target.value})} placeholder="Password" className="flex-1 p-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-rose-500/20 outline-none font-medium text-sm transition-all" />
+              </div>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 mt-2">
+                 <p className="text-xs font-bold text-slate-700 mb-2">สิทธิ์การจัดการระบบ (เลือกได้มากกว่า 1)</p>
+                 <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={newAdmin.permissions.includes('helpdesk')} onChange={()=>handlePermissionChange('helpdesk')} /> ระบบแจ้งซ่อม</label>
+                 <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={newAdmin.permissions.includes('rooms')} onChange={()=>handlePermissionChange('rooms')} /> ระบบจองห้องประชุม</label>
+                 <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={newAdmin.permissions.includes('cars')} onChange={()=>handlePermissionChange('cars')} /> ระบบจองรถโรงเรียน</label>
+                 <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={newAdmin.permissions.includes('foods')} onChange={()=>handlePermissionChange('foods')} /> ระบบสั่งอาหาร</label>
+                 <label className="flex items-center gap-2 text-sm text-rose-600 font-bold border-t border-slate-200 pt-2"><input type="checkbox" checked={newAdmin.permissions.includes('all')} onChange={()=>handlePermissionChange('all')} className="accent-rose-500" /> ผู้ดูแลระบบสูงสุด (จัดการได้ทุกระบบ)</label>
+              </div>
+              <button onClick={handleAddAdmin} className="w-full mt-2 px-4 py-3 bg-rose-600 text-white rounded-2xl font-bold text-sm hover:bg-rose-700 shadow-md active:scale-95 transition-all">บันทึก Admin ใหม่</button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* จัดการหมวดหมู่แจ้งซ่อม */}
+        {canManageHelpdesk && (
+          <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white h-max">
+            <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+               <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Wrench size={20}/></div>
+               <h3 className="text-xl font-bold text-slate-800">หมวดหมู่แจ้งซ่อม</h3>
+            </div>
+            <ul className="space-y-3 mb-6">
+              {categories.map(c => (
+                <li key={c.id} className="flex justify-between items-center p-3.5 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
+                  <span className="text-sm font-bold text-slate-700">{c.name}</span>
+                  <button onClick={() => setCategories(categories.filter(cat => cat.id !== c.id))} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all"><X size={16}/></button>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-3">
+              <input type="text" value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="เพิ่มหมวดหมู่ใหม่..." className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none font-medium text-sm transition-all" />
+              <button onClick={handleAddCategory} className="px-5 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 shadow-md active:scale-95 transition-all">เพิ่ม</button>
+            </div>
+          </div>
+        )}
 
         {/* จัดการหมวดหมู่อาหาร */}
-        <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white h-max">
-          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-             <div className="p-2 bg-amber-50 text-amber-600 rounded-xl"><Utensils size={20}/></div>
-             <h3 className="text-xl font-bold text-slate-800">หมวดหมู่เมนูอาหาร</h3>
-          </div>
-          <ul className="space-y-3 mb-6">
-            {foodCategories.map(c => (
-              <li key={c.id} className="flex justify-between items-center p-3.5 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
-                <span className="text-sm font-bold text-slate-700">{c.name}</span>
-                <button onClick={() => {
-                   setFoodCategories(foodCategories.filter(cat => cat.id !== c.id));
-                   syncToGoogleSheet('deleteFoodCategory', { id: c.id });
-                }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all"><X size={16}/></button>
-              </li>
-            ))}
-          </ul>
-          <div className="flex gap-3">
-            <input type="text" value={newFoodCategory} onChange={e => setNewFoodCategory(e.target.value)} placeholder="เพิ่มหมวดหมู่อาหารใหม่..." className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all" />
-            <button onClick={handleAddFoodCategory} className="px-5 py-3 bg-amber-500 text-white rounded-2xl font-bold text-sm hover:bg-amber-600 shadow-md active:scale-95 transition-all">เพิ่ม</button>
-          </div>
-        </div>
-
-        {/* จัดการเมนูอาหาร */}
-        <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white xl:col-span-2">
-          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-             <div className="p-2 bg-amber-50 text-amber-600 rounded-xl"><Utensils size={20}/></div>
-             <h3 className="text-xl font-bold text-slate-800">จัดการรายการอาหาร / เครื่องดื่ม</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 max-h-64 overflow-y-auto pr-2 hide-scrollbar">
-            {foods.map(f => (
-              <div key={f.id} className="flex justify-between items-start p-4 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
-                <div className="w-full">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-base font-bold text-slate-800 block truncate pr-2">{f.name}</span>
-                    <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">{f.price} ฿</span>
-                  </div>
-                  <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100 block w-max mt-2">{f.category || 'ไม่มีหมวดหมู่'} | จำกัด {f.maxQuantity}</span>
-                </div>
-                <button onClick={() => {
-                   setFoods(foods.filter(item => item.id !== f.id));
-                   syncToGoogleSheet('deleteFoodItem', { id: f.id });
-                }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-3"><X size={16}/></button>
-              </div>
-            ))}
-          </div>
-          <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-            <p className="text-sm font-black text-slate-700 uppercase tracking-widest">เพิ่มเมนูใหม่</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" value={newFood.name} onChange={e => setNewFood({...newFood, name: e.target.value})} placeholder="ชื่อเมนู" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all sm:col-span-2" />
-              <select value={newFood.category} onChange={e => setNewFood({...newFood, category: e.target.value})} className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-bold text-sm transition-all">
-                {foodCategories.length === 0 && <option value="">ไม่มีหมวดหมู่</option>}
-                {foodCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-              </select>
-              <input type="number" value={newFood.price} onChange={e => setNewFood({...newFood, price: e.target.value})} placeholder="ราคา (บาท)" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all" />
-              <input type="number" value={newFood.maxQuantity} onChange={e => setNewFood({...newFood, maxQuantity: e.target.value})} placeholder="จำนวนจำกัด" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all" />
-              <div className="sm:col-span-2 flex items-center gap-4">
-                 <input type="file" accept="image/*" onChange={handleFoodImageUpload} className="flex-1 text-sm text-slate-500 file:mr-4 file:py-3.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200 cursor-pointer" />
-                 {newFood.image && <img src={newFood.image} className="w-12 h-12 rounded-xl object-cover border" alt="Preview"/>}
-              </div>
+        {canManageFoods && (
+          <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white h-max">
+            <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+               <div className="p-2 bg-amber-50 text-amber-600 rounded-xl"><Utensils size={20}/></div>
+               <h3 className="text-xl font-bold text-slate-800">หมวดหมู่เมนูอาหาร</h3>
             </div>
-            <button onClick={handleAddFood} className="w-full mt-2 px-4 py-4 bg-amber-500 text-white rounded-2xl font-bold text-sm hover:bg-amber-600 shadow-md active:scale-95 transition-all">บันทึกเมนูใหม่</button>
+            <ul className="space-y-3 mb-6">
+              {foodCategories.map(c => (
+                <li key={c.id} className="flex justify-between items-center p-3.5 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
+                  <span className="text-sm font-bold text-slate-700">{c.name}</span>
+                  <button onClick={() => {
+                     setFoodCategories(foodCategories.filter(cat => cat.id !== c.id));
+                     syncToGoogleSheet('deleteFoodCategory', { id: c.id });
+                  }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all"><X size={16}/></button>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-3">
+              <input type="text" value={newFoodCategory} onChange={e => setNewFoodCategory(e.target.value)} placeholder="เพิ่มหมวดหมู่อาหารใหม่..." className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all" />
+              <button onClick={handleAddFoodCategory} className="px-5 py-3 bg-amber-500 text-white rounded-2xl font-bold text-sm hover:bg-amber-600 shadow-md active:scale-95 transition-all">เพิ่ม</button>
+            </div>
           </div>
-        </div>
-        
-        {/* จัดการหมวดหมู่แจ้งซ่อม */}
-        <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white h-max">
-          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-             <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Wrench size={20}/></div>
-             <h3 className="text-xl font-bold text-slate-800">หมวดหมู่แจ้งซ่อม</h3>
-          </div>
-          <ul className="space-y-3 mb-6">
-            {categories.map(c => (
-              <li key={c.id} className="flex justify-between items-center p-3.5 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
-                <span className="text-sm font-bold text-slate-700">{c.name}</span>
-                <button onClick={() => setCategories(categories.filter(cat => cat.id !== c.id))} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all"><X size={16}/></button>
-              </li>
-            ))}
-          </ul>
-          <div className="flex gap-3">
-            <input type="text" value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="เพิ่มหมวดหมู่ใหม่..." className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none font-medium text-sm transition-all" />
-            <button onClick={handleAddCategory} className="px-5 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 shadow-md active:scale-95 transition-all">เพิ่ม</button>
-          </div>
-        </div>
+        )}
 
         {/* จัดการข้อมูลห้องประชุม */}
-        <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
-          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-             <div className="p-2 bg-blue-50 text-blue-600 rounded-xl"><CalendarDays size={20}/></div>
-             <h3 className="text-xl font-bold text-slate-800">ข้อมูลห้องประชุม</h3>
-          </div>
-          <ul className="space-y-3 mb-8 max-h-64 overflow-y-auto pr-2 hide-scrollbar">
-            {rooms.map(r => (
-              <li key={r.id} className="flex justify-between items-center p-4 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
-                <div>
-                  <span className="text-sm font-bold text-slate-800 block mb-1">{r.name}</span>
-                  <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100">ความจุ: {r.capacity} ท่าน | อุปกรณ์: {r.equipment}</span>
-                </div>
-                <button onClick={() => {
-                   setRooms(rooms.filter(room => room.id !== r.id));
-                   syncToGoogleSheet('deleteRoom', { id: r.id });
-                }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-2"><X size={16}/></button>
-              </li>
-            ))}
-          </ul>
-          <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-            <p className="text-sm font-black text-slate-700 uppercase tracking-widest">เพิ่มห้องประชุมใหม่</p>
-            <input type="text" value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})} placeholder="ชื่อห้องประชุม" className="w-full p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium text-sm transition-all" />
-            <div className="flex gap-3">
-              <input type="number" value={newRoom.capacity} onChange={e => setNewRoom({...newRoom, capacity: e.target.value})} placeholder="ความจุ (ท่าน)" className="w-1/3 p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium text-sm transition-all" />
-              <input type="text" value={newRoom.equipment} onChange={e => setNewRoom({...newRoom, equipment: e.target.value})} placeholder="อุปกรณ์ (เช่น Projector)" className="flex-1 p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium text-sm transition-all" />
+        {canManageRooms && (
+          <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white xl:col-span-2">
+            <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+               <div className="p-2 bg-blue-50 text-blue-600 rounded-xl"><CalendarDays size={20}/></div>
+               <h3 className="text-xl font-bold text-slate-800">ข้อมูลห้องประชุม</h3>
             </div>
-            <input type="text" value={newRoom.image} onChange={e => setNewRoom({...newRoom, image: e.target.value})} placeholder="URL รูปภาพห้อง (ถ้ามี)" className="w-full p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium text-sm transition-all" />
-            <button onClick={handleAddRoom} className="w-full mt-2 px-4 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-blue-600 shadow-md active:scale-95 transition-all">บันทึกข้อมูลห้อง</button>
+            <ul className="space-y-3 mb-8 max-h-64 overflow-y-auto pr-2 hide-scrollbar">
+              {rooms.map(r => (
+                <li key={r.id} className="flex justify-between items-center p-4 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
+                  <div>
+                    <span className="text-sm font-bold text-slate-800 block mb-1">{r.name}</span>
+                    <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100">ความจุ: {r.capacity} ท่าน | อุปกรณ์: {r.equipment}</span>
+                  </div>
+                  <button onClick={() => {
+                     setRooms(rooms.filter(room => room.id !== r.id));
+                     syncToGoogleSheet('deleteRoom', { id: r.id });
+                  }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-2"><X size={16}/></button>
+                </li>
+              ))}
+            </ul>
+            <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+              <p className="text-sm font-black text-slate-700 uppercase tracking-widest">เพิ่มห้องประชุมใหม่</p>
+              <input type="text" value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})} placeholder="ชื่อห้องประชุม" className="w-full p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium text-sm transition-all" />
+              <div className="flex gap-3">
+                <input type="number" value={newRoom.capacity} onChange={e => setNewRoom({...newRoom, capacity: e.target.value})} placeholder="ความจุ (ท่าน)" className="w-1/3 p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium text-sm transition-all" />
+                <input type="text" value={newRoom.equipment} onChange={e => setNewRoom({...newRoom, equipment: e.target.value})} placeholder="อุปกรณ์ (เช่น Projector)" className="flex-1 p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium text-sm transition-all" />
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <input type="file" accept="image/*" onChange={handleRoomImageUpload} className="flex-1 text-sm text-slate-500 file:mr-4 file:py-3.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer" />
+                {newRoom.image && <img src={newRoom.image} className="w-12 h-12 rounded-xl object-cover border" alt="Preview"/>}
+              </div>
+
+              <button onClick={handleAddRoom} className="w-full mt-2 px-4 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-blue-600 shadow-md active:scale-95 transition-all">บันทึกข้อมูลห้อง</button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* จัดการข้อมูลรถโรงเรียน */}
-        <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white xl:col-span-2">
-          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-             <div className="p-2 bg-teal-50 text-teal-600 rounded-xl"><Car size={20}/></div>
-             <h3 className="text-xl font-bold text-slate-800">ข้อมูลรถโรงเรียน</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 max-h-64 overflow-y-auto pr-2 hide-scrollbar">
-            {cars.map(c => (
-              <div key={c.id} className="flex justify-between items-start p-4 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
-                <div className="w-full">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-base font-bold text-slate-800 block">{c.plate}</span>
-                    <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-lg">{c.type}</span>
-                  </div>
-                  <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100 block w-max mt-2">คนขับ: {c.driver} | จุ: {c.capacity}</span>
-                </div>
-                <button onClick={() => {
-                   setCars(cars.filter(car => car.id !== c.id));
-                   syncToGoogleSheet('deleteCar', { id: c.id });
-                }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-3"><X size={16}/></button>
-              </div>
-            ))}
-          </div>
-          <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-            <p className="text-sm font-black text-slate-700 uppercase tracking-widest">เพิ่มรถโรงเรียนคันใหม่</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" value={newCar.plate} onChange={e => setNewCar({...newCar, plate: e.target.value})} placeholder="ทะเบียนรถ" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 outline-none font-medium text-sm transition-all" />
-              <select value={newCar.type} onChange={e => setNewCar({...newCar, type: e.target.value})} className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 outline-none font-bold text-sm transition-all">
-                <option value="รถตู้">รถตู้</option>
-                <option value="รถกระบะ">รถกระบะ</option>
-                <option value="รถบัส">รถบัส</option>
-                <option value="รถเก๋ง">รถเก๋ง</option>
-              </select>
-              <input type="number" value={newCar.capacity} onChange={e => setNewCar({...newCar, capacity: e.target.value})} placeholder="ความจุ (ที่นั่ง)" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 outline-none font-medium text-sm transition-all" />
-              <input type="text" value={newCar.driver} onChange={e => setNewCar({...newCar, driver: e.target.value})} placeholder="ชื่อพนักงานขับรถ" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 outline-none font-medium text-sm transition-all" />
-              <input type="text" value={newCar.image} onChange={e => setNewCar({...newCar, image: e.target.value})} placeholder="URL รูปภาพรถ (ถ้ามี)" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 outline-none font-medium text-sm transition-all sm:col-span-2" />
+        {canManageCars && (
+          <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white xl:col-span-2">
+            <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+               <div className="p-2 bg-teal-50 text-teal-600 rounded-xl"><Car size={20}/></div>
+               <h3 className="text-xl font-bold text-slate-800">ข้อมูลรถโรงเรียน</h3>
             </div>
-            <button onClick={handleAddCar} className="w-full mt-2 px-4 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-teal-600 shadow-md active:scale-95 transition-all">บันทึกข้อมูลรถโรงเรียน</button>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 max-h-64 overflow-y-auto pr-2 hide-scrollbar">
+              {cars.map(c => (
+                <div key={c.id} className="flex justify-between items-start p-4 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
+                  <div className="w-full">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-base font-bold text-slate-800 block">{c.plate}</span>
+                      <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-lg">{c.type}</span>
+                    </div>
+                    <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100 block w-max mt-2">คนขับ: {c.driver} | จุ: {c.capacity}</span>
+                  </div>
+                  <button onClick={() => {
+                     setCars(cars.filter(car => car.id !== c.id));
+                     syncToGoogleSheet('deleteCar', { id: c.id });
+                  }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-3"><X size={16}/></button>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+              <p className="text-sm font-black text-slate-700 uppercase tracking-widest">เพิ่มรถโรงเรียนคันใหม่</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input type="text" value={newCar.plate} onChange={e => setNewCar({...newCar, plate: e.target.value})} placeholder="ทะเบียนรถ" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 outline-none font-medium text-sm transition-all" />
+                <select value={newCar.type} onChange={e => setNewCar({...newCar, type: e.target.value})} className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 outline-none font-bold text-sm transition-all">
+                  <option value="รถตู้">รถตู้</option>
+                  <option value="รถกระบะ">รถกระบะ</option>
+                  <option value="รถบัส">รถบัส</option>
+                  <option value="รถเก๋ง">รถเก๋ง</option>
+                </select>
+                <input type="number" value={newCar.capacity} onChange={e => setNewCar({...newCar, capacity: e.target.value})} placeholder="ความจุ (ที่นั่ง)" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 outline-none font-medium text-sm transition-all" />
+                <input type="text" value={newCar.driver} onChange={e => setNewCar({...newCar, driver: e.target.value})} placeholder="ชื่อพนักงานขับรถ (ระบุ: ไม่มี หากขับเอง)" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 outline-none font-medium text-sm transition-all" />
+                
+                <div className="sm:col-span-2">
+                   <input type="tel" value={newCar.driverPhone} onChange={e => setNewCar({...newCar, driverPhone: e.target.value})} placeholder="เบอร์โทรศัพท์คนขับรถ (ถ้ามี)" className="w-full p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-teal-500/20 outline-none font-medium text-sm transition-all" />
+                </div>
+
+                <div className="sm:col-span-2 flex items-center gap-4">
+                   <input type="file" accept="image/*" onChange={handleCarImageUpload} className="flex-1 text-sm text-slate-500 file:mr-4 file:py-3.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-teal-100 file:text-teal-700 hover:file:bg-teal-200 cursor-pointer" />
+                   {newCar.image && <img src={newCar.image} className="w-12 h-12 rounded-xl object-cover border" alt="Preview"/>}
+                </div>
+
+              </div>
+              <button onClick={handleAddCar} className="w-full mt-2 px-4 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-teal-600 shadow-md active:scale-95 transition-all">บันทึกข้อมูลรถโรงเรียน</button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* จัดการเมนูอาหาร */}
+        {canManageFoods && (
+          <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white xl:col-span-2">
+            <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+               <div className="p-2 bg-amber-50 text-amber-600 rounded-xl"><Utensils size={20}/></div>
+               <h3 className="text-xl font-bold text-slate-800">จัดการรายการอาหาร / เครื่องดื่ม</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 max-h-64 overflow-y-auto pr-2 hide-scrollbar">
+              {foods.map(f => (
+                <div key={f.id} className="flex justify-between items-start p-4 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
+                  <div className="w-full">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-base font-bold text-slate-800 block truncate pr-2">{f.name}</span>
+                      <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">{f.price} ฿</span>
+                    </div>
+                    <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100 block w-max mt-2">{f.category || 'ไม่มีหมวดหมู่'} | จำกัด {f.maxQuantity}</span>
+                  </div>
+                  <button onClick={() => {
+                     setFoods(foods.filter(item => item.id !== f.id));
+                     syncToGoogleSheet('deleteFoodItem', { id: f.id });
+                  }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-3"><X size={16}/></button>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+              <p className="text-sm font-black text-slate-700 uppercase tracking-widest">เพิ่มเมนูใหม่</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input type="text" value={newFood.name} onChange={e => setNewFood({...newFood, name: e.target.value})} placeholder="ชื่อเมนู" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all sm:col-span-2" />
+                <select value={newFood.category} onChange={e => setNewFood({...newFood, category: e.target.value})} className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-bold text-sm transition-all">
+                  {foodCategories.length === 0 && <option value="">ไม่มีหมวดหมู่</option>}
+                  {foodCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+                <input type="number" value={newFood.price} onChange={e => setNewFood({...newFood, price: e.target.value})} placeholder="ราคา (บาท)" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all" />
+                <input type="number" value={newFood.maxQuantity} onChange={e => setNewFood({...newFood, maxQuantity: e.target.value})} placeholder="จำนวนจำกัด" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all" />
+                <div className="sm:col-span-2 flex items-center gap-4">
+                   <input type="file" accept="image/*" onChange={handleFoodImageUpload} className="flex-1 text-sm text-slate-500 file:mr-4 file:py-3.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200 cursor-pointer" />
+                   {newFood.image && <img src={newFood.image} className="w-12 h-12 rounded-xl object-cover border" alt="Preview"/>}
+                </div>
+              </div>
+              <button onClick={handleAddFood} className="w-full mt-2 px-4 py-4 bg-amber-500 text-white rounded-2xl font-bold text-sm hover:bg-amber-600 shadow-md active:scale-95 transition-all">บันทึกเมนูใหม่</button>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
