@@ -4,7 +4,7 @@ import {
   LogOut, Menu, X, Plus, CheckCircle, XCircle, Clock, 
   MapPin, AlertCircle, FileText, Check, ChevronRight, ChevronLeft,
   BarChart, Lock, Eye, Image as ImageIcon, Printer, DownloadCloud,
-  Utensils, ShoppingCart, Minus, Mail, ShieldAlert, Filter
+  Utensils, ShoppingCart, Minus, Mail, ShieldAlert, Filter, ArrowUpDown
 } from 'lucide-react';
 
 // --- Mock Data ---
@@ -215,6 +215,40 @@ export default function App() {
   );
 }
 
+// --- Shared Components ---
+
+const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-100 bg-slate-50/50 gap-4">
+      <span className="text-sm text-slate-500 font-medium text-center sm:text-left w-full sm:w-auto">
+        แสดง {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, totalItems)} จาก {totalItems} รายการ
+      </span>
+      <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+        <button 
+          onClick={() => onPageChange(currentPage - 1)} 
+          disabled={currentPage === 1}
+          className="flex items-center gap-1 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all font-bold text-sm"
+        >
+          <ChevronLeft size={16} /> ก่อนหน้า
+        </button>
+        <span className="text-sm font-bold text-slate-700 whitespace-nowrap">
+          หน้า {currentPage} / {totalPages}
+        </span>
+        <button 
+          onClick={() => onPageChange(currentPage + 1)} 
+          disabled={currentPage === totalPages}
+          className="flex items-center gap-1 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all font-bold text-sm"
+        >
+          ถัดไป <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const NavItem = ({ icon, label, active, onClick }) => (
   <button 
     onClick={onClick}
@@ -383,19 +417,35 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
   const [view, setView] = useState('list'); 
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', title: '', category: categories[0]?.name || '', location: '', description: '', image: null });
+  
+  // Filtering and Pagination States
   const [filterDate, setFilterDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   const canManageHelpdesk = user.role === 'admin' && (user.permissions?.includes('all') || user.permissions?.includes('helpdesk'));
 
-  const filteredTickets = tickets.filter(t => {
+  useEffect(() => { setCurrentPage(1); }, [filterDate, filterStatus, filterCategory, sortOrder]);
+
+  const processedTickets = [...tickets].filter(t => {
     if (filterStatus !== 'all' && t.status !== filterStatus) return false;
+    if (filterCategory !== 'all' && t.category !== filterCategory) return false;
     if (filterDate) {
       const tDate = new Date(t.createdAt).toLocaleDateString('en-CA');
       if (tDate !== filterDate) return false;
     }
     return true;
+  }).sort((a, b) => {
+    const timeA = new Date(a.createdAt).getTime();
+    const timeB = new Date(b.createdAt).getTime();
+    return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
   });
+
+  const totalItems = processedTickets.length;
+  const paginatedTickets = processedTickets.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -622,21 +672,23 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
 
       {view === 'list' && (
         <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
                <Filter size={20} className="text-slate-400" />
-               <span className="font-bold text-slate-700">ตัวกรอง:</span>
+               <span className="font-bold text-slate-700">ตัวกรองข้อมูล:</span>
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-               <input 
-                 type="date" 
-                 value={filterDate} 
-                 onChange={e => setFilterDate(e.target.value)} 
-                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-sm text-slate-700"
-               />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+               <select 
+                 value={filterCategory} 
+                 onChange={e => { setFilterCategory(e.target.value); setCurrentPage(1); }} 
+                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-slate-700"
+               >
+                  <option value="all">ทุกประเภท</option>
+                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+               </select>
                <select 
                  value={filterStatus} 
-                 onChange={e => setFilterStatus(e.target.value)} 
+                 onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }} 
                  className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-slate-700"
                >
                   <option value="all">ทุกสถานะ</option>
@@ -645,10 +697,25 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
                   <option value="completed">เสร็จสิ้น</option>
                   <option value="cancelled">ยกเลิก</option>
                </select>
-               {(filterDate || filterStatus !== 'all') && (
-                 <button onClick={() => { setFilterDate(''); setFilterStatus('all'); }} className="text-sm font-bold text-rose-500 hover:text-rose-700 px-3">ล้างค่า</button>
-               )}
+               <input 
+                 type="date" 
+                 value={filterDate} 
+                 onChange={e => { setFilterDate(e.target.value); setCurrentPage(1); }} 
+                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-sm text-slate-700"
+               />
+               <button 
+                 onClick={() => { setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
+                 className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
+               >
+                 <ArrowUpDown size={16} /> 
+                 {sortOrder === 'desc' ? 'ใหม่ไปเก่า' : 'เก่าไปใหม่'}
+               </button>
             </div>
+            {(filterDate || filterCategory !== 'all' || filterStatus !== 'all' || sortOrder !== 'desc') && (
+               <div className="flex justify-end">
+                 <button onClick={() => { setFilterDate(''); setFilterCategory('all'); setFilterStatus('all'); setSortOrder('desc'); setCurrentPage(1); }} className="text-sm font-bold text-rose-500 hover:text-rose-700 px-3 whitespace-nowrap">ล้างค่าตัวกรอง</button>
+               </div>
+            )}
           </div>
 
           <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -663,7 +730,7 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
-                {filteredTickets.map(t => (
+                {paginatedTickets.map(t => (
                   <tr key={t.id} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="p-6 cursor-pointer" onClick={() => viewDetails(t)}>
                       <div className="font-bold text-slate-800 text-lg flex items-center gap-3 group-hover:text-indigo-600 transition-colors">
@@ -699,12 +766,13 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
                     </td>
                   </tr>
                 ))}
-                {filteredTickets.length === 0 && (
-                  <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลที่ตรงกับเงื่อนไข</td></tr>
+                {paginatedTickets.length === 0 && (
+                  <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลตามเงื่อนไขที่กรอง</td></tr>
                 )}
               </tbody>
             </table>
           </div>
+          <Pagination totalItems={totalItems} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
         </div>
       )}
     </div>
@@ -716,6 +784,16 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', title: '', startTime: '', endTime: '', details: '' });
   const [errorMsg, setErrorMsg] = useState('');
+  
+  // States for advanced filtering
+  const [filterRoom, setFilterRoom] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDate, setFilterDate] = useState('');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => { setCurrentPage(1); }, [filterRoom, filterStatus, filterDate, sortOrder]);
 
   const checkAvailability = (roomId, start, end) => {
     const sTime = new Date(start).getTime();
@@ -846,8 +924,71 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
         </div>
       )}
 
-      {view === 'my_bookings' && (
-        <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
+      {view === 'my_bookings' && (() => {
+        const filteredBookings = [...roomBookings]
+          .filter(b => {
+            const matchDate = !filterDate || new Date(b.startTime).toLocaleDateString('en-CA') === filterDate;
+            const matchStatus = filterStatus === 'all' || b.status === filterStatus;
+            const matchRoom = filterRoom === 'all' || b.roomId === filterRoom;
+            return matchDate && matchStatus && matchRoom;
+          })
+          .sort((a, b) => {
+            const timeA = new Date(a.startTime).getTime();
+            const timeB = new Date(b.startTime).getTime();
+            return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+          });
+
+        const totalItems = filteredBookings.length;
+        const paginatedBookings = filteredBookings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+        return (
+        <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+               <Filter size={20} className="text-slate-400" />
+               <span className="font-bold text-slate-700">ตัวกรองข้อมูล:</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+               <select 
+                 value={filterRoom} 
+                 onChange={e => setFilterRoom(e.target.value)} 
+                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm text-slate-700"
+               >
+                  <option value="all">ทุกห้องประชุม</option>
+                  {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+               </select>
+               <select 
+                 value={filterStatus} 
+                 onChange={e => setFilterStatus(e.target.value)} 
+                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm text-slate-700"
+               >
+                  <option value="all">ทุกสถานะ</option>
+                  <option value="pending">รออนุมัติ</option>
+                  <option value="approved">อนุมัติแล้ว</option>
+                  <option value="rejected">ไม่อนุมัติ</option>
+                  <option value="cancelled">ยกเลิก</option>
+               </select>
+               <input 
+                 type="date" 
+                 value={filterDate} 
+                 onChange={e => setFilterDate(e.target.value)} 
+                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm text-slate-700"
+               />
+               <button 
+                 onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                 className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
+               >
+                 <ArrowUpDown size={16} /> 
+                 {sortOrder === 'desc' ? 'ใหม่ไปเก่า' : 'เก่าไปใหม่'}
+               </button>
+            </div>
+            {(filterDate || filterRoom !== 'all' || filterStatus !== 'all' || sortOrder !== 'desc') && (
+               <div className="flex justify-end">
+                 <button onClick={() => { setFilterDate(''); setFilterRoom('all'); setFilterStatus('all'); setSortOrder('desc'); setCurrentPage(1); }} className="text-sm font-bold text-rose-500 hover:text-rose-700 px-3 whitespace-nowrap">ล้างค่าตัวกรอง</button>
+               </div>
+            )}
+          </div>
+
           <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             <table className="w-full text-left border-collapse min-w-[800px]">
                <thead>
@@ -858,14 +999,14 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/80">
-                  {roomBookings.map(b => {
+                  {paginatedBookings.map(b => {
                     const room = rooms.find(r => r.id === b.roomId);
                     return (
                     <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="p-6">
                         <div className="font-bold text-slate-800 text-lg mb-1">{b.title}</div>
                         <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                           <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-lg">{room?.name}</span> 
+                           <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-lg">{room?.name || 'ไม่ระบุ'}</span> 
                            <span className="text-slate-300">•</span> ผู้จอง: {b.requesterName}
                         </div>
                       </td>
@@ -876,14 +1017,15 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
                       <td className="p-6"><StatusBadge status={b.status} type="booking" /></td>
                     </tr>
                   )})}
-                  {roomBookings.length === 0 && (
-                    <tr><td colSpan="3" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการจอง</td></tr>
+                  {paginatedBookings.length === 0 && (
+                    <tr><td colSpan="3" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลตามเงื่อนไขที่กรอง</td></tr>
                   )}
                 </tbody>
             </table>
           </div>
+          <Pagination totalItems={totalItems} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
         </div>
-      )}
+      );})()}
     </div>
   );
 };
@@ -895,6 +1037,16 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
   const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', title: '', destination: '', passengers: 1, startTime: '', endTime: '', attachment: null, selfDrive: false });
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Filtering states
+  const [filterCar, setFilterCar] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDate, setFilterDate] = useState('');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => { setCurrentPage(1); }, [filterCar, filterStatus, filterDate, sortOrder]);
 
   const checkAvailability = (carId, start, end, selfDrive) => {
     const sTime = new Date(start).getTime();
@@ -1182,14 +1334,75 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
         );
       })()}
 
-      {view === 'my_bookings' && (
+      {view === 'my_bookings' && (() => {
+        const filteredBookings = [...carBookings].filter(b => {
+          const matchDate = !filterDate || new Date(b.startTime).toLocaleDateString('en-CA') === filterDate;
+          const matchStatus = filterStatus === 'all' || b.status === filterStatus;
+          const matchCar = filterCar === 'all' || b.carId === filterCar;
+          return matchDate && matchStatus && matchCar;
+        }).sort((a, b) => {
+          const timeA = new Date(a.startTime).getTime();
+          const timeB = new Date(b.startTime).getTime();
+          return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+        });
+
+        const totalItems = filteredBookings.length;
+        const paginatedBookings = filteredBookings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+        return (
         <>
           {successMsg && (
             <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 text-emerald-700 font-medium rounded-2xl flex items-center gap-3 animate-in slide-in-from-top-4 shadow-sm whitespace-pre-line">
               <CheckCircle size={24}/> {successMsg}
             </div>
           )}
-          <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
+          <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                 <Filter size={20} className="text-slate-400" />
+                 <span className="font-bold text-slate-700">ตัวกรองข้อมูล:</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                 <select 
+                   value={filterCar} 
+                   onChange={e => { setFilterCar(e.target.value); setCurrentPage(1); }} 
+                   className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 font-bold text-sm text-slate-700"
+                 >
+                    <option value="all">รถทุกคัน</option>
+                    {cars.map(c => <option key={c.id} value={c.id}>{c.plate}</option>)}
+                 </select>
+                 <select 
+                   value={filterStatus} 
+                   onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }} 
+                   className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 font-bold text-sm text-slate-700"
+                 >
+                    <option value="all">ทุกสถานะ</option>
+                    <option value="pending">รออนุมัติ</option>
+                    <option value="approved">อนุมัติแล้ว</option>
+                    <option value="rejected">ไม่อนุมัติ</option>
+                    <option value="cancelled">ยกเลิก</option>
+                 </select>
+                 <input 
+                   type="date" 
+                   value={filterDate} 
+                   onChange={e => { setFilterDate(e.target.value); setCurrentPage(1); }} 
+                   className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 font-medium text-sm text-slate-700"
+                 />
+                 <button 
+                   onClick={() => { setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
+                   className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
+                 >
+                   <ArrowUpDown size={16} /> 
+                   {sortOrder === 'desc' ? 'ใหม่ไปเก่า' : 'เก่าไปใหม่'}
+                 </button>
+              </div>
+              {(filterDate || filterCar !== 'all' || filterStatus !== 'all' || sortOrder !== 'desc') && (
+                 <div className="flex justify-end">
+                   <button onClick={() => { setFilterDate(''); setFilterCar('all'); setFilterStatus('all'); setSortOrder('desc'); setCurrentPage(1); }} className="text-sm font-bold text-rose-500 hover:text-rose-700 px-3 whitespace-nowrap">ล้างค่าตัวกรอง</button>
+                 </div>
+              )}
+            </div>
+
             <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
               <table className="w-full text-left border-collapse min-w-[800px]">
                  <thead>
@@ -1202,7 +1415,7 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100/80">
-                    {carBookings.map(b => {
+                    {paginatedBookings.map(b => {
                       const car = cars.find(c => c.id === b.carId);
                       return (
                       <tr key={b.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => viewDetails(b)}>
@@ -1225,7 +1438,7 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
                           )}
                         </td>
                         <td className="p-6 text-base font-bold text-teal-700">
-                           {car?.plate}
+                           {car?.plate || 'ไม่ระบุ'}
                            {b.selfDrive && <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">ขับเอง</span>}
                         </td>
                         <td className="p-6">
@@ -1238,15 +1451,16 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
                         </td>
                       </tr>
                     )})}
-                    {carBookings.length === 0 && (
-                      <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการจอง</td></tr>
+                    {paginatedBookings.length === 0 && (
+                      <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลตามเงื่อนไขที่กรอง</td></tr>
                     )}
                   </tbody>
               </table>
             </div>
+            <Pagination totalItems={totalItems} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
           </div>
         </>
-      )}
+      );})()}
     </div>
   );
 };
@@ -1259,6 +1473,15 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
     deliveryTime: '', timeSlot: ['อาหารกลางวัน'], cateringType: 'สั่งปกติ (A-la-carte)', pax: 1 
   });
   const [activeCategory, setActiveCategory] = useState('all');
+  
+  // Filtering States
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDate, setFilterDate] = useState('');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => { setCurrentPage(1); }, [filterStatus, filterDate, sortOrder]);
 
   const totalCartItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
 
@@ -1504,8 +1727,61 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
         </div>
       )}
 
-      {view === 'my_orders' && (
-        <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
+      {view === 'my_orders' && (() => {
+        const filteredOrders = [...foodOrders].filter(b => {
+          const targetDate = new Date(b.deliveryTime || b.createdAt).toLocaleDateString('en-CA');
+          const matchDate = !filterDate || targetDate === filterDate;
+          const matchStatus = filterStatus === 'all' || b.status === filterStatus;
+          const isOwnerOrAdmin = user.role === 'admin' || b.createdBy === user.id || b.createdBy === 'guest';
+          return matchDate && matchStatus && isOwnerOrAdmin;
+        }).sort((a, b) => {
+          const timeA = new Date(a.deliveryTime || a.createdAt).getTime();
+          const timeB = new Date(b.deliveryTime || b.createdAt).getTime();
+          return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+        });
+
+        const totalItems = filteredOrders.length;
+        const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+        return (
+        <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+               <Filter size={20} className="text-slate-400" />
+               <span className="font-bold text-slate-700">ตัวกรองออเดอร์:</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+               <select 
+                 value={filterStatus} 
+                 onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }} 
+                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 font-bold text-sm text-slate-700"
+               >
+                  <option value="all">ทุกสถานะ</option>
+                  <option value="pending">รอรับออเดอร์</option>
+                  <option value="approved">จัดส่งเรียบร้อยแล้ว</option>
+                  <option value="rejected">ยกเลิก</option>
+               </select>
+               <input 
+                 type="date" 
+                 value={filterDate} 
+                 onChange={e => { setFilterDate(e.target.value); setCurrentPage(1); }} 
+                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 font-medium text-sm text-slate-700"
+               />
+               <button 
+                 onClick={() => { setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
+                 className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
+               >
+                 <ArrowUpDown size={16} /> 
+                 {sortOrder === 'desc' ? 'ใหม่ไปเก่า' : 'เก่าไปใหม่'}
+               </button>
+            </div>
+            {(filterDate || filterStatus !== 'all' || sortOrder !== 'desc') && (
+               <div className="flex justify-end">
+                 <button onClick={() => { setFilterDate(''); setFilterStatus('all'); setSortOrder('desc'); setCurrentPage(1); }} className="text-sm font-bold text-rose-500 hover:text-rose-700 px-3 whitespace-nowrap">ล้างค่าตัวกรอง</button>
+               </div>
+            )}
+          </div>
+
           <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             <table className="w-full text-left border-collapse min-w-[800px]">
                <thead>
@@ -1517,7 +1793,7 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/80">
-                  {foodOrders.filter(b => user.role === 'admin' || b.createdBy === user.id || b.createdBy === 'guest').map(b => {
+                  {paginatedOrders.map(b => {
                     let parsedItems = [];
                     try { parsedItems = JSON.parse(b.itemsString); } catch(e){}
                     return (
@@ -1553,14 +1829,15 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
                       <td className="p-6"><StatusBadge status={b.status} type="order" /></td>
                     </tr>
                   )})}
-                  {foodOrders.length === 0 && (
-                    <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีประวัติการสั่งอาหาร</td></tr>
+                  {paginatedOrders.length === 0 && (
+                    <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลตามเงื่อนไขที่กรอง</td></tr>
                   )}
                 </tbody>
             </table>
           </div>
+          <Pagination totalItems={totalItems} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
         </div>
-      )}
+      );})()}
     </div>
   );
 };
