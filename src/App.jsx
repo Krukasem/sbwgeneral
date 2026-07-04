@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   LayoutDashboard, Wrench, CalendarDays, Car, Users, Settings, 
   LogOut, Menu, X, Plus, CheckCircle, XCircle, Clock, 
   MapPin, AlertCircle, FileText, Check, ChevronRight, ChevronLeft,
   BarChart, Lock, Eye, Image as ImageIcon, Printer, DownloadCloud,
-  Utensils, ShoppingCart, Minus, Mail, ShieldAlert, Filter, ArrowUpDown
+  Utensils, ShoppingCart, Minus, Mail, ShieldAlert, Filter, ArrowUpDown,
+  CarFront, DoorOpen, Calendar, Edit
 } from 'lucide-react';
 
 // --- Mock Data ---
@@ -782,6 +783,7 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
 const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
   const [view, setView] = useState('calendar'); 
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [selectedBooking, setSelectedBooking] = useState(null);
   const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', title: '', startTime: '', endTime: '', details: '' });
   const [errorMsg, setErrorMsg] = useState('');
   
@@ -826,15 +828,26 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
     setSelectedRoom(room); setView('book'); setErrorMsg('');
   };
 
+  const viewDetails = (booking) => {
+    setSelectedBooking(booking);
+    setView('detail');
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col xl:flex-row xl:justify-between xl:items-center gap-6">
         <h2 className="text-3xl font-black text-slate-800 tracking-tight">ระบบจองห้องประชุม</h2>
-        <div className="flex bg-slate-200/60 p-1.5 rounded-2xl shadow-inner w-max">
-          <button onClick={() => setView('calendar')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'calendar' ? 'bg-white shadow-sm text-blue-600 scale-100' : 'text-slate-500 hover:text-slate-800'}`}>ปฏิทิน</button>
-          <button onClick={() => setView('list')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'list' || view === 'book' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}>ดูห้องประชุม</button>
-          <button onClick={() => setView('my_bookings')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'my_bookings' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}>การจองทั้งหมด</button>
-        </div>
+        {view === 'detail' ? (
+           <button onClick={() => setView('my_bookings')} className="bg-white text-slate-700 border border-slate-200 px-6 py-3 rounded-2xl font-bold shadow-sm flex items-center gap-2 hover:bg-slate-50 active:scale-95 transition-all">
+             กลับหน้ารายการ
+           </button>
+        ) : (
+          <div className="flex bg-slate-200/60 p-1.5 rounded-2xl shadow-inner w-max">
+            <button onClick={() => setView('calendar')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'calendar' ? 'bg-white shadow-sm text-blue-600 scale-100' : 'text-slate-500 hover:text-slate-800'}`}>ปฏิทิน</button>
+            <button onClick={() => setView('list')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'list' || view === 'book' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}>ดูห้องประชุม</button>
+            <button onClick={() => setView('my_bookings')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'my_bookings' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}>การจองทั้งหมด</button>
+          </div>
+        )}
       </div>
 
       {view === 'calendar' && <ScheduleCalendar bookings={roomBookings} items={rooms} itemKey="roomId" />}
@@ -924,6 +937,56 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
         </div>
       )}
 
+      {view === 'detail' && selectedBooking && (() => {
+        const room = rooms.find(r => r.id === selectedBooking.roomId);
+        return (
+          <div className="max-w-4xl mx-auto animate-in zoom-in-95 duration-300">
+            <div className="bg-white/90 backdrop-blur-xl p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white">
+              <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-8 border-b border-slate-100 pb-8">
+                <div>
+                  <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg tracking-wider">ห้องประชุม: {room?.name || 'ไม่ระบุ'}</span>
+                  <h3 className="text-3xl font-black text-slate-800 leading-tight mt-3">{selectedBooking.title}</h3>
+                  <p className="text-slate-500 font-medium mt-1">ผู้ทำรายการจอง: {selectedBooking.requesterName}</p>
+                </div>
+                <div className="scale-110 origin-left md:origin-right"><StatusBadge status={selectedBooking.status} type="booking" /></div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-8">
+                <div className="space-y-6">
+                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">ข้อมูลผู้ติดต่อ</h4>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-slate-400 font-bold border border-slate-200 shadow-sm">
+                        <Users size={20} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800 text-lg">{selectedBooking.requesterName}</p>
+                        <p className="text-slate-500 font-medium text-sm">โทร. {selectedBooking.requesterPhone || 'ไม่ระบุ'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">วันเวลาการจองใช้งาน</h4>
+                    <div className="bg-slate-50 p-5 rounded-3xl text-slate-700 font-medium border border-slate-100 flex flex-col gap-2">
+                      <div className="flex justify-between"><span className="text-slate-500">เวลาเริ่มประชุม:</span> <span className="font-bold text-slate-800">{new Date(selectedBooking.startTime).toLocaleString('th-TH')}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">เวลาเสร็จสิ้น:</span> <span className="font-bold text-slate-800">{new Date(selectedBooking.endTime).toLocaleString('th-TH')}</span></div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">รายละเอียด / ความต้องการเพิ่มเติม</h4>
+                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 min-h-[120px] text-slate-700 font-medium whitespace-pre-line">
+                    {selectedBooking.details || 'ไม่มีรายละเอียดความต้องการเพิ่มเติม'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {view === 'my_bookings' && (() => {
         const filteredBookings = [...roomBookings]
           .filter(b => {
@@ -942,16 +1005,16 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
         const paginatedBookings = filteredBookings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
         return (
-        <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col">
+        <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col animate-in fade-in duration-300">
           <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-4">
             <div className="flex items-center gap-3">
                <Filter size={20} className="text-slate-400" />
-               <span className="font-bold text-slate-700">ตัวกรองข้อมูล:</span>
+               <span className="font-bold text-slate-700">ตัวกรองข้อมูลห้องประชุม:</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                <select 
                  value={filterRoom} 
-                 onChange={e => setFilterRoom(e.target.value)} 
+                 onChange={e => { setFilterRoom(e.target.value); setCurrentPage(1); }} 
                  className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm text-slate-700"
                >
                   <option value="all">ทุกห้องประชุม</option>
@@ -959,7 +1022,7 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
                </select>
                <select 
                  value={filterStatus} 
-                 onChange={e => setFilterStatus(e.target.value)} 
+                 onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }} 
                  className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm text-slate-700"
                >
                   <option value="all">ทุกสถานะ</option>
@@ -971,11 +1034,11 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
                <input 
                  type="date" 
                  value={filterDate} 
-                 onChange={e => setFilterDate(e.target.value)} 
+                 onChange={e => { setFilterDate(e.target.value); setCurrentPage(1); }} 
                  className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm text-slate-700"
                />
                <button 
-                 onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                 onClick={() => { setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
                  className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
                >
                  <ArrowUpDown size={16} /> 
@@ -994,17 +1057,20 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
                <thead>
                   <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
                     <th className="p-6 font-bold uppercase tracking-wider">หัวข้อ / ห้อง</th>
-                    <th className="p-6 font-bold uppercase tracking-wider">เวลา</th>
+                    <th className="p-6 font-bold uppercase tracking-wider">เวลาจองใช้งาน</th>
                     <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
+                    <th className="p-6 font-bold uppercase tracking-wider text-center">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/80">
                   {paginatedBookings.map(b => {
                     const room = rooms.find(r => r.id === b.roomId);
                     return (
-                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => viewDetails(b)}>
                       <td className="p-6">
-                        <div className="font-bold text-slate-800 text-lg mb-1">{b.title}</div>
+                        <div className="font-bold text-slate-800 text-lg mb-1 flex items-center gap-2 group-hover:text-blue-600 transition-colors">
+                          {b.title}
+                        </div>
                         <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
                            <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-lg">{room?.name || 'ไม่ระบุ'}</span> 
                            <span className="text-slate-300">•</span> ผู้จอง: {b.requesterName}
@@ -1015,10 +1081,15 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
                         <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
                       </td>
                       <td className="p-6"><StatusBadge status={b.status} type="booking" /></td>
+                      <td className="p-6 text-center">
+                        <button onClick={(e) => { e.stopPropagation(); viewDetails(b); }} className="px-4 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm">
+                           ดูรายละเอียด
+                        </button>
+                      </td>
                     </tr>
                   )})}
                   {paginatedBookings.length === 0 && (
-                    <tr><td colSpan="3" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลตามเงื่อนไขที่กรอง</td></tr>
+                    <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลตามเงื่อนไขที่กรอง</td></tr>
                   )}
                 </tbody>
             </table>
@@ -1483,26 +1554,30 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
 
   useEffect(() => { setCurrentPage(1); }, [filterStatus, filterDate, sortOrder]);
 
-  const totalCartItems = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+  const totalCartItems = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
 
-  const updateCart = (foodId, delta) => {
-    const currentQty = cart[foodId] || 0;
-    const food = foods.find(f => f.id === foodId);
-    let newQty = currentQty + delta;
-    if (newQty > food.maxQuantity) newQty = food.maxQuantity;
-    
+  const updateCart = (foodId, delta, noteStr) => {
     setCart(prev => {
       const updated = { ...prev };
+      const currentItem = updated[foodId] || { qty: 0, note: '' };
+      let newQty = currentItem.qty + delta;
+      
+      const food = foods.find(f => f.id === foodId);
+      if (food && newQty > food.maxQuantity) newQty = food.maxQuantity;
+      
       if (newQty <= 0) {
         delete updated[foodId];
       } else {
-        updated[foodId] = newQty;
+        updated[foodId] = {
+          qty: newQty,
+          note: noteStr !== undefined ? noteStr : currentItem.note
+        };
       }
       return updated;
     });
   };
 
-  const getBasePrice = () => Object.keys(cart).reduce((sum, id) => sum + (foods.find(f => f.id === id).price * cart[id]), 0);
+  const getBasePrice = () => Object.keys(cart).reduce((sum, id) => sum + (foods.find(f => f.id === id).price * cart[id].qty), 0);
   const getMultiplier = () => formData.cateringType === 'สั่งปกติ (A-la-carte)' ? 1 : formData.pax;
 
   const handleOrder = (e) => {
@@ -1511,7 +1586,7 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
 
     const orderItems = Object.keys(cart).map(foodId => {
       const food = foods.find(f => f.id === foodId);
-      return { id: foodId, name: food.name, price: food.price, qty: cart[foodId] };
+      return { id: foodId, name: food.name, price: food.price, qty: cart[foodId].qty, note: cart[foodId].note };
     });
     const totalPrice = getBasePrice() * getMultiplier();
 
@@ -1560,7 +1635,7 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             {foods.filter(f => activeCategory === 'all' || f.category === activeCategory).map(food => {
-               const qtyInCart = cart[food.id] || 0;
+               const qtyInCart = cart[food.id]?.qty || 0;
                return (
                 <div key={food.id} className="bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col group hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300">
                   <div className="relative overflow-hidden h-48 bg-slate-100">
@@ -1641,15 +1716,27 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
                 <div className="space-y-4 mb-8 bg-slate-50 p-6 rounded-3xl border border-slate-100">
                    {Object.keys(cart).map(foodId => {
                       const food = foods.find(f => f.id === foodId);
-                      const qty = cart[foodId];
+                      const qty = cart[foodId].qty;
+                      const note = cart[foodId].note || '';
                       return (
-                         <div key={foodId} className="flex justify-between items-center border-b border-slate-200/60 pb-3 last:border-0 last:pb-0">
-                            <div>
-                               <p className="font-bold text-slate-800 text-base">{food.name}</p>
-                               <p className="text-sm font-medium text-slate-500">{food.price} ฿ {formData.cateringType === 'สั่งปกติ (A-la-carte)' && `x ${qty}`}</p>
+                         <div key={foodId} className="border-b border-slate-200/60 pb-4 last:border-0 last:pb-0">
+                            <div className="flex justify-between items-center">
+                               <div>
+                                  <p className="font-bold text-slate-800 text-base">{food.name}</p>
+                                  <p className="text-sm font-medium text-slate-500">{food.price} ฿ {formData.cateringType === 'สั่งปกติ (A-la-carte)' && `x ${qty}`}</p>
+                               </div>
+                               <div className="font-black text-lg text-slate-800">
+                                  {formData.cateringType === 'สั่งปกติ (A-la-carte)' ? food.price * qty : food.price} ฿
+                               </div>
                             </div>
-                            <div className="font-black text-lg text-slate-800">
-                               {formData.cateringType === 'สั่งปกติ (A-la-carte)' ? food.price * qty : food.price} ฿
+                            <div className="mt-3">
+                               <input 
+                                 type="text" 
+                                 placeholder="ระบุรายละเอียดเพิ่มเติมเฉพาะเมนูนี้ (เช่น ไม่เผ็ด, พิเศษ)..." 
+                                 className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/10 transition-all placeholder:text-slate-400"
+                                 value={note}
+                                 onChange={e => updateCart(foodId, 0, e.target.value)} 
+                               />
                             </div>
                          </div>
                       )
@@ -1714,9 +1801,9 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700 ml-1">หมายเหตุเพิ่มเติม</label>
+                  <label className="block text-sm font-bold text-slate-700 ml-1">หมายเหตุเพิ่มเติม (สำหรับทั้งออเดอร์)</label>
                   <textarea rows="2" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium resize-none"
-                    value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} placeholder="เช่น ไม่เผ็ด, ไม่ใส่ผักชี (ไม่บังคับ)"></textarea>
+                    value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} placeholder="เช่น จัดเบรกใส่กล่อง, ขอช้อนส้อม 10 คู่ (ไม่บังคับ)"></textarea>
                 </div>
                 <div className="pt-6 flex gap-4">
                   <button type="submit" className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-amber-200 hover:shadow-2xl active:scale-[0.98] transition-all">ยืนยันการสั่งอาหาร</button>
@@ -1802,11 +1889,14 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
                         <div className="mb-2">
                            <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded-lg">{b.cateringType || 'สั่งปกติ (A-la-carte)'}</span>
                         </div>
-                        <div className="font-bold text-slate-800 text-base mb-2 space-y-1">
+                        <div className="font-bold text-slate-800 text-base mb-2 space-y-2">
                            {parsedItems.map((item, idx) => (
-                              <div key={idx} className="flex justify-between">
-                                 <span>- {item.name}</span>
-                                 {b.cateringType === 'สั่งปกติ (A-la-carte)' && <span className="text-slate-500 text-sm">x{item.qty}</span>}
+                              <div key={idx} className="flex flex-col">
+                                <div className="flex justify-between">
+                                   <span>- {item.name}</span>
+                                   {b.cateringType === 'สั่งปกติ (A-la-carte)' && <span className="text-slate-500 text-sm">x{item.qty}</span>}
+                                </div>
+                                {item.note && <span className="text-xs text-rose-500 mt-0.5 ml-2 font-medium bg-rose-50 px-2 py-0.5 rounded w-max">หมายเหตุ: {item.note}</span>}
                               </div>
                            ))}
                         </div>
@@ -1993,10 +2083,14 @@ const Approvals = ({ user, roomBookings, setRoomBookings, carBookings, setCarBoo
                       <div className="mb-2">
                          <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded-lg">{b.cateringType || 'สั่งปกติ (A-la-carte)'}</span>
                       </div>
-                      <div className="font-bold text-slate-800 text-sm mb-1 space-y-1">
+                      <div className="font-bold text-slate-800 text-sm mb-1 space-y-2">
                          {parsedItems.map((item, idx) => (
-                            <div key={idx} className="flex gap-2">
-                               <span className="text-slate-500">{item.qty}x</span> <span>{item.name}</span>
+                            <div key={idx} className="flex flex-col">
+                              <div className="flex justify-between">
+                                 <span>- {item.name}</span>
+                                 {b.cateringType === 'สั่งปกติ (A-la-carte)' && <span className="text-slate-500 text-sm">x{item.qty}</span>}
+                              </div>
+                              {item.note && <span className="text-xs text-rose-500 mt-0.5 ml-2 font-medium bg-rose-50 px-2 py-0.5 rounded w-max">หมายเหตุ: {item.note}</span>}
                             </div>
                          ))}
                       </div>
@@ -2034,7 +2128,7 @@ const Approvals = ({ user, roomBookings, setRoomBookings, carBookings, setCarBoo
               })}
 
               {((tab === 'rooms' && roomBookings.length === 0) || (tab === 'cars' && carBookings.length === 0) || (tab === 'foods' && foodOrders.length === 0)) && (
-                 <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีรายการขออนุมัติ</td></tr>
+                 <tr><td col colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ยังไม่มีรายการขออนุมัติ</td></tr>
               )}
             </tbody>
           </table>
@@ -2268,6 +2362,7 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
   const [newCategory, setNewCategory] = useState('');
   const [newFoodCategory, setNewFoodCategory] = useState('');
   const [newRoom, setNewRoom] = useState({ name: '', capacity: '', equipment: '', image: null });
+  const [editingRoom, setEditingRoom] = useState(null); 
   const [newCar, setNewCar] = useState({ plate: '', type: 'รถตู้', capacity: '', driver: '', driverPhone: '', image: null });
   const [newFood, setNewFood] = useState({ name: '', price: '', maxQuantity: '', category: foodCategories[0]?.name || '', image: null });
   const [newAdmin, setNewAdmin] = useState({ username: '', password: '', name: '', permissions: [] });
@@ -2307,13 +2402,20 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
 
   const handleAddRoom = () => {
     if (!newRoom.name) return;
-    const roomObj = { 
-      id: 'r' + Date.now(), 
-      ...newRoom, 
-      status: 'ready'
-    };
-    setRooms([...rooms, roomObj]);
-    syncToGoogleSheet('addRoom', roomObj);
+    if (editingRoom) {
+      const updatedRoom = { ...editingRoom, ...newRoom };
+      setRooms(rooms.map(r => r.id === editingRoom.id ? updatedRoom : r));
+      syncToGoogleSheet('updateRoom', updatedRoom);
+      setEditingRoom(null);
+    } else {
+      const roomObj = { 
+        id: 'r' + Date.now(), 
+        ...newRoom, 
+        status: 'ready'
+      };
+      setRooms([...rooms, roomObj]);
+      syncToGoogleSheet('addRoom', roomObj);
+    }
     setNewRoom({ name: '', capacity: '', equipment: '', image: null });
   };
 
@@ -2533,15 +2635,24 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
                     <span className="text-sm font-bold text-slate-800 block mb-1">{r.name}</span>
                     <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100">ความจุ: {r.capacity} ท่าน | อุปกรณ์: {r.equipment}</span>
                   </div>
-                  <button onClick={() => {
-                     setRooms(rooms.filter(room => room.id !== r.id));
-                     syncToGoogleSheet('deleteRoom', { id: r.id });
-                  }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-2"><X size={16}/></button>
+                  <div className="flex gap-2 ml-2">
+                    <button onClick={() => { 
+                      setEditingRoom(r); 
+                      setNewRoom({name: r.name, capacity: r.capacity, equipment: r.equipment, image: r.image}); 
+                    }} className="text-indigo-400 hover:text-indigo-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all"><Edit size={16}/></button>
+                    <button onClick={() => {
+                       setRooms(rooms.filter(room => room.id !== r.id));
+                       syncToGoogleSheet('deleteRoom', { id: r.id });
+                    }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all"><X size={16}/></button>
+                  </div>
                 </li>
               ))}
             </ul>
             <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-              <p className="text-sm font-black text-slate-700 uppercase tracking-widest">เพิ่มห้องประชุมใหม่</p>
+              <div className="flex justify-between items-center">
+                 <p className="text-sm font-black text-slate-700 uppercase tracking-widest">{editingRoom ? 'แก้ไขห้องประชุม' : 'เพิ่มห้องประชุมใหม่'}</p>
+                 {editingRoom && <button onClick={() => { setEditingRoom(null); setNewRoom({ name: '', capacity: '', equipment: '', image: null }); }} className="text-xs font-bold text-rose-500 hover:underline">ยกเลิกการแก้ไข</button>}
+              </div>
               <input type="text" value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})} placeholder="ชื่อห้องประชุม" className="w-full p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium text-sm transition-all" />
               <div className="flex gap-3">
                 <input type="number" value={newRoom.capacity} onChange={e => setNewRoom({...newRoom, capacity: e.target.value})} placeholder="ความจุ (ท่าน)" className="w-1/3 p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none font-medium text-sm transition-all" />
@@ -2553,7 +2664,9 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
                 {newRoom.image && <img src={newRoom.image} className="w-12 h-12 rounded-xl object-cover border" alt="Preview"/>}
               </div>
 
-              <button onClick={handleAddRoom} className="w-full mt-2 px-4 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-blue-600 shadow-md active:scale-95 transition-all">บันทึกข้อมูลห้อง</button>
+              <button onClick={handleAddRoom} className="w-full mt-2 px-4 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-blue-600 shadow-md active:scale-95 transition-all">
+                 {editingRoom ? 'อัปเดตข้อมูลห้อง' : 'บันทึกข้อมูลห้อง'}
+              </button>
             </div>
           </div>
         )}
@@ -2606,50 +2719,6 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
 
               </div>
               <button onClick={handleAddCar} className="w-full mt-2 px-4 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-teal-600 shadow-md active:scale-95 transition-all">บันทึกข้อมูลรถโรงเรียน</button>
-            </div>
-          </div>
-        )}
-
-        {/* จัดการเมนูอาหาร */}
-        {canManageFoods && (
-          <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white xl:col-span-2">
-            <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
-               <div className="p-2 bg-amber-50 text-amber-600 rounded-xl"><Utensils size={20}/></div>
-               <h3 className="text-xl font-bold text-slate-800">จัดการรายการอาหาร / เครื่องดื่ม</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 max-h-64 overflow-y-auto pr-2 hide-scrollbar">
-              {foods.map(f => (
-                <div key={f.id} className="flex justify-between items-start p-4 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
-                  <div className="w-full">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-base font-bold text-slate-800 block truncate pr-2">{f.name}</span>
-                      <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">{f.price} ฿</span>
-                    </div>
-                    <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg border border-slate-100 block w-max mt-2">{f.category || 'ไม่มีหมวดหมู่'} | จำกัด {f.maxQuantity}</span>
-                  </div>
-                  <button onClick={() => {
-                     setFoods(foods.filter(item => item.id !== f.id));
-                     syncToGoogleSheet('deleteFoodItem', { id: f.id });
-                  }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-3"><X size={16}/></button>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
-              <p className="text-sm font-black text-slate-700 uppercase tracking-widest">เพิ่มเมนูใหม่</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <input type="text" value={newFood.name} onChange={e => setNewFood({...newFood, name: e.target.value})} placeholder="ชื่อเมนู" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all sm:col-span-2" />
-                <select value={newFood.category} onChange={e => setNewFood({...newFood, category: e.target.value})} className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-bold text-sm transition-all">
-                  {foodCategories.length === 0 && <option value="">ไม่มีหมวดหมู่</option>}
-                  {foodCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                </select>
-                <input type="number" value={newFood.price} onChange={e => setNewFood({...newFood, price: e.target.value})} placeholder="ราคา (บาท)" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all" />
-                <input type="number" value={newFood.maxQuantity} onChange={e => setNewFood({...newFood, maxQuantity: e.target.value})} placeholder="จำนวนจำกัด" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all" />
-                <div className="sm:col-span-2 flex items-center gap-4">
-                   <input type="file" accept="image/*" onChange={handleFoodImageUpload} className="flex-1 text-sm text-slate-500 file:mr-4 file:py-3.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200 cursor-pointer" />
-                   {newFood.image && <img src={newFood.image} className="w-12 h-12 rounded-xl object-cover border" alt="Preview"/>}
-                </div>
-              </div>
-              <button onClick={handleAddFood} className="w-full mt-2 px-4 py-4 bg-amber-500 text-white rounded-2xl font-bold text-sm hover:bg-amber-600 shadow-md active:scale-95 transition-all">บันทึกเมนูใหม่</button>
             </div>
           </div>
         )}
