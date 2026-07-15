@@ -635,7 +635,7 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
                       className="w-full h-auto max-h-80 object-contain rounded-2xl bg-white" 
                       onError={(e) => { 
                          e.target.onerror = null; 
-                         e.target.src = 'https://placehold.co/600x400/f8fafc/64748b?text=Preview+Unavailable\\nClick+to+view+full+image'; 
+                         e.target.src = 'https://placehold.co/600x400/f8fafc/64748b?text=Preview+Unavailable\nClick+to+view+full+image'; 
                       }}
                     />
                   </a>
@@ -684,19 +684,19 @@ const Helpdesk = ({ user, tickets, setTickets, categories }) => {
                  onChange={e => { setFilterCategory(e.target.value); setCurrentPage(1); }} 
                  className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-slate-700"
                >
-                  <option value="all">ทุกประเภท</option>
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                 <option value="all">ทุกประเภท</option>
+                 {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                </select>
                <select 
                  value={filterStatus} 
                  onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }} 
                  className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-slate-700"
                >
-                  <option value="all">ทุกสถานะ</option>
-                  <option value="pending">รอรับงาน</option>
-                  <option value="in_progress">กำลังดำเนินการ</option>
-                  <option value="completed">เสร็จสิ้น</option>
-                  <option value="cancelled">ยกเลิก</option>
+                 <option value="all">ทุกสถานะ</option>
+                 <option value="pending">รอรับงาน</option>
+                 <option value="in_progress">กำลังดำเนินการ</option>
+                 <option value="completed">เสร็จสิ้น</option>
+                 <option value="cancelled">ยกเลิก</option>
                </select>
                <input 
                  type="date" 
@@ -1017,19 +1017,19 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
                  onChange={e => { setFilterRoom(e.target.value); setCurrentPage(1); }} 
                  className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm text-slate-700"
                >
-                  <option value="all">ทุกห้องประชุม</option>
-                  {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                 <option value="all">ทุกห้องประชุม</option>
+                 {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                </select>
                <select 
                  value={filterStatus} 
                  onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }} 
                  className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm text-slate-700"
                >
-                  <option value="all">ทุกสถานะ</option>
-                  <option value="pending">รออนุมัติ</option>
-                  <option value="approved">อนุมัติแล้ว</option>
-                  <option value="rejected">ไม่อนุมัติ</option>
-                  <option value="cancelled">ยกเลิก</option>
+                 <option value="all">ทุกสถานะ</option>
+                 <option value="pending">รออนุมัติ</option>
+                 <option value="approved">อนุมัติแล้ว</option>
+                 <option value="rejected">ไม่อนุมัติ</option>
+                 <option value="cancelled">ยกเลิก</option>
                </select>
                <input 
                  type="date" 
@@ -1843,10 +1843,10 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
                  onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }} 
                  className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 font-bold text-sm text-slate-700"
                >
-                  <option value="all">ทุกสถานะ</option>
-                  <option value="pending">รอรับออเดอร์</option>
-                  <option value="approved">จัดส่งเรียบร้อยแล้ว</option>
-                  <option value="rejected">ยกเลิก</option>
+                 <option value="all">ทุกสถานะ</option>
+                 <option value="pending">รอรับออเดอร์</option>
+                 <option value="approved">จัดส่งเรียบร้อยแล้ว</option>
+                 <option value="rejected">ยกเลิก</option>
                </select>
                <input 
                  type="date" 
@@ -2140,6 +2140,7 @@ const Approvals = ({ user, roomBookings, setRoomBookings, carBookings, setCarBoo
 
 const Reports = ({ user, tickets, roomBookings, carBookings, foodOrders, rooms, cars, foods, categories }) => {
   const [tab, setTab] = useState('');
+  const [filterMonth, setFilterMonth] = useState(''); // เก็บค่าเดือนที่เลือก (YYYY-MM)
 
   const allowedTabs = [];
   if (user.permissions?.includes('all') || user.permissions?.includes('helpdesk')) allowedTabs.push('helpdesk');
@@ -2153,30 +2154,37 @@ const Reports = ({ user, tickets, roomBookings, carBookings, foodOrders, rooms, 
     }
   }, [user, tab, allowedTabs]);
 
-  const totalTickets = tickets.length;
-  const completedTickets = tickets.filter(t => t.status === 'completed').length;
-  const pendingTickets = tickets.filter(t => t.status === 'pending').length;
-  const inProgressTickets = tickets.filter(t => t.status === 'in_progress').length;
+  // คัดกรองข้อมูลตามเดือนที่เลือก
+  const currentTickets = tickets.filter(t => !filterMonth || t.createdAt.startsWith(filterMonth));
+  const currentRoomBookings = roomBookings.filter(b => !filterMonth || b.startTime.startsWith(filterMonth));
+  const currentCarBookings = carBookings.filter(b => !filterMonth || b.startTime.startsWith(filterMonth));
+  const currentFoodOrders = foodOrders.filter(b => !filterMonth || (b.deliveryTime || b.createdAt).startsWith(filterMonth));
 
-  const totalRoomBookings = roomBookings.length;
-  const approvedRooms = roomBookings.filter(b => b.status === 'approved').length;
+  // คำนวณสถิติจากข้อมูลที่ผ่านการกรองเดือนแล้ว
+  const totalTickets = currentTickets.length;
+  const completedTickets = currentTickets.filter(t => t.status === 'completed').length;
+  const pendingTickets = currentTickets.filter(t => t.status === 'pending').length;
+  const inProgressTickets = currentTickets.filter(t => t.status === 'in_progress').length;
 
-  const totalCarBookings = carBookings.length;
-  const approvedCars = carBookings.filter(b => b.status === 'approved').length;
+  const totalRoomBookings = currentRoomBookings.length;
+  const approvedRooms = currentRoomBookings.filter(b => b.status === 'approved').length;
 
-  const totalFoodOrders = foodOrders.length;
-  const approvedFoods = foodOrders.filter(b => b.status === 'approved').length;
-  const pendingFoods = foodOrders.filter(b => b.status === 'pending').length;
+  const totalCarBookings = currentCarBookings.length;
+  const approvedCars = currentCarBookings.filter(b => b.status === 'approved').length;
+
+  const totalFoodOrders = currentFoodOrders.length;
+  const approvedFoods = currentFoodOrders.filter(b => b.status === 'approved').length;
+  const pendingFoods = currentFoodOrders.filter(b => b.status === 'pending').length;
 
   const handleExportPDF = () => window.print();
 
   const handleExportExcel = () => {
     let dataToExport = [];
-    let filename = 'report.csv';
+    let filename = `report_${filterMonth || 'all'}.csv`;
 
     if (tab === 'helpdesk') {
-      filename = 'helpdesk_report.csv';
-      dataToExport = tickets.map(t => ({
+      filename = `helpdesk_report_${filterMonth || 'all'}.csv`;
+      dataToExport = currentTickets.map(t => ({
         'รหัสงาน': t.id,
         'วันที่แจ้ง': new Date(t.createdAt).toLocaleString('th-TH'),
         'ผู้แจ้ง': t.requesterName,
@@ -2187,8 +2195,8 @@ const Reports = ({ user, tickets, roomBookings, carBookings, foodOrders, rooms, 
         'สถานะ': t.status === 'pending' ? 'รอรับงาน' : t.status === 'in_progress' ? 'กำลังดำเนินการ' : t.status === 'completed' ? 'เสร็จสิ้น' : 'ยกเลิก'
       }));
     } else if (tab === 'rooms') {
-      filename = 'room_bookings_report.csv';
-      dataToExport = roomBookings.map(b => ({
+      filename = `room_bookings_report_${filterMonth || 'all'}.csv`;
+      dataToExport = currentRoomBookings.map(b => ({
         'เรื่อง': b.title,
         'ห้อง': rooms.find(r => r.id === b.roomId)?.name || 'N/A',
         'ผู้จอง': b.requesterName,
@@ -2197,8 +2205,8 @@ const Reports = ({ user, tickets, roomBookings, carBookings, foodOrders, rooms, 
         'สถานะ': b.status === 'approved' ? 'อนุมัติแล้ว' : b.status === 'pending' ? 'รออนุมัติ' : b.status === 'rejected' ? 'ไม่อนุมัติ' : 'ยกเลิก'
       }));
     } else if (tab === 'cars') {
-      filename = 'car_bookings_report.csv';
-      dataToExport = carBookings.map(b => ({
+      filename = `car_bookings_report_${filterMonth || 'all'}.csv`;
+      dataToExport = currentCarBookings.map(b => ({
         'ปลายทาง': b.destination,
         'รถ': cars.find(c => c.id === b.carId)?.plate || 'N/A',
         'ผู้จอง': b.requesterName,
@@ -2209,8 +2217,8 @@ const Reports = ({ user, tickets, roomBookings, carBookings, foodOrders, rooms, 
         'สถานะ': b.status === 'approved' ? 'อนุมัติแล้ว' : b.status === 'pending' ? 'รออนุมัติ' : b.status === 'rejected' ? 'ไม่อนุมัติ' : 'ยกเลิก'
       }));
     } else if (tab === 'foods') {
-      filename = 'food_orders_report.csv';
-      dataToExport = foodOrders.map(b => ({
+      filename = `food_orders_report_${filterMonth || 'all'}.csv`;
+      dataToExport = currentFoodOrders.map(b => ({
         'รหัสออเดอร์': b.id,
         'ผู้สั่ง': b.requesterName,
         'เบอร์โทร': b.requesterPhone,
@@ -2251,13 +2259,35 @@ const Reports = ({ user, tickets, roomBookings, carBookings, foodOrders, rooms, 
     <div className="space-y-8 animate-in fade-in duration-500 pb-10 print:p-0 print:space-y-4">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <h2 className="text-3xl font-black text-slate-800 tracking-tight">รายงานสรุปผล</h2>
-        <div className="flex gap-3 print:hidden">
-          <button onClick={handleExportPDF} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all active:scale-95">
-            <Printer size={18} /> ส่งออก PDF
-          </button>
-          <button onClick={handleExportExcel} className="flex items-center gap-2 px-5 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl font-bold hover:bg-emerald-500 hover:text-white shadow-sm transition-all active:scale-95">
-            <DownloadCloud size={18} /> ส่งออก Excel
-          </button>
+        
+        {/* ส่วนตัวเลือกเดือน และ ส่งออก */}
+        <div className="flex flex-col sm:flex-row gap-3 print:hidden">
+          <div className="flex items-center bg-white border border-slate-200 rounded-xl px-4 py-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500">
+            <span className="text-sm font-bold text-slate-500 mr-3">ประจำเดือน:</span>
+            <input 
+              type="month" 
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              className="outline-none text-sm font-bold text-slate-700 cursor-pointer bg-transparent"
+            />
+            {filterMonth && (
+              <button 
+                onClick={() => setFilterMonth('')} 
+                className="ml-3 text-xs font-bold text-rose-500 hover:text-rose-700 bg-rose-50 px-2 py-1 rounded-lg transition-colors"
+              >
+                ดูทั้งหมด
+              </button>
+            )}
+          </div>
+          
+          <div className="flex gap-2">
+            <button onClick={handleExportPDF} className="flex flex-1 justify-center items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all active:scale-95">
+              <Printer size={18} /> PDF
+            </button>
+            <button onClick={handleExportExcel} className="flex flex-1 justify-center items-center gap-2 px-5 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl font-bold hover:bg-emerald-500 hover:text-white shadow-sm transition-all active:scale-95">
+              <DownloadCloud size={18} /> Excel
+            </button>
+          </div>
         </div>
       </div>
       
@@ -2273,10 +2303,11 @@ const Reports = ({ user, tickets, roomBookings, carBookings, foodOrders, rooms, 
           {tab === 'helpdesk' ? 'สรุปรายงานระบบแจ้งซ่อม' : tab === 'rooms' ? 'สรุปรายงานการใช้งานห้องประชุม' : tab === 'cars' ? 'สรุปรายงานการใช้งานรถโรงเรียน' : 'สรุปรายงานออเดอร์สั่งอาหาร'}
         </h3>
         <p className="text-sm mt-2">พิมพ์เมื่อ: {new Date().toLocaleString('th-TH')}</p>
+        {filterMonth && <p className="text-sm font-bold text-blue-600">ข้อมูลประจำเดือน: {new Date(filterMonth + '-01').toLocaleString('th-TH', {month: 'long', year: 'numeric'})}</p>}
       </div>
 
       {tab === 'helpdesk' && (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 print:grid-cols-4">
             <StatCard title="แจ้งซ่อมทั้งหมด" value={totalTickets} icon={<FileText size={28} />} color="from-slate-700 to-slate-900 text-white shadow-slate-200" />
             <StatCard title="เสร็จสิ้น" value={completedTickets} icon={<CheckCircle size={28} />} color="from-emerald-400 to-green-500 text-white shadow-green-200" />
@@ -2297,7 +2328,7 @@ const Reports = ({ user, tickets, roomBookings, carBookings, foodOrders, rooms, 
               <h3 className="text-xl font-black text-slate-800 mb-6">แยกตามหมวดหมู่ปัญหา</h3>
               <div className="space-y-6">
                 {categories.map(c => {
-                  const count = tickets.filter(t => t.category === c.name).length;
+                  const count = currentTickets.filter(t => t.category === c.name).length;
                   return <ProgressBar key={c.id} label={c.name} count={count} total={totalTickets} color="bg-indigo-500" />;
                 })}
               </div>
@@ -2307,17 +2338,17 @@ const Reports = ({ user, tickets, roomBookings, carBookings, foodOrders, rooms, 
       )}
 
       {tab === 'rooms' && (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3">
             <StatCard title="รายการจองทั้งหมด" value={totalRoomBookings} icon={<FileText size={28} />} color="from-blue-500 to-indigo-600 text-white shadow-blue-200" />
             <StatCard title="อนุมัติแล้ว" value={approvedRooms} icon={<CheckCircle size={28} />} color="from-emerald-400 to-green-500 text-white shadow-green-200" />
-            <StatCard title="รออนุมัติ" value={roomBookings.filter(b => b.status === 'pending').length} icon={<Clock size={28} />} color="from-amber-400 to-orange-500 text-white shadow-orange-200" />
+            <StatCard title="รออนุมัติ" value={currentRoomBookings.filter(b => b.status === 'pending').length} icon={<Clock size={28} />} color="from-amber-400 to-orange-500 text-white shadow-orange-200" />
           </div>
           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white print:shadow-none print:border-slate-200 print:rounded-lg">
             <h3 className="text-xl font-black text-slate-800 mb-6">ความถี่ในการใช้งานห้องประชุม</h3>
             <div className="space-y-6">
               {rooms.map(r => {
-                const count = roomBookings.filter(b => b.roomId === r.id).length;
+                const count = currentRoomBookings.filter(b => b.roomId === r.id).length;
                 return <ProgressBar key={r.id} label={r.name} count={count} total={totalRoomBookings} color="bg-blue-500" />;
               })}
             </div>
@@ -2326,17 +2357,17 @@ const Reports = ({ user, tickets, roomBookings, carBookings, foodOrders, rooms, 
       )}
 
       {tab === 'cars' && (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3">
             <StatCard title="รายการจองทั้งหมด" value={totalCarBookings} icon={<FileText size={28} />} color="from-teal-500 to-emerald-600 text-white shadow-teal-200" />
             <StatCard title="อนุมัติแล้ว" value={approvedCars} icon={<CheckCircle size={28} />} color="from-emerald-400 to-green-500 text-white shadow-green-200" />
-            <StatCard title="รออนุมัติ" value={carBookings.filter(b => b.status === 'pending').length} icon={<Clock size={28} />} color="from-amber-400 to-orange-500 text-white shadow-orange-200" />
+            <StatCard title="รออนุมัติ" value={currentCarBookings.filter(b => b.status === 'pending').length} icon={<Clock size={28} />} color="from-amber-400 to-orange-500 text-white shadow-orange-200" />
           </div>
           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white print:shadow-none print:border-slate-200 print:rounded-lg">
             <h3 className="text-xl font-black text-slate-800 mb-6">สถิติการใช้งานรถโรงเรียน</h3>
             <div className="space-y-6">
               {cars.map(c => {
-                const count = carBookings.filter(b => b.carId === c.id).length;
+                const count = currentCarBookings.filter(b => b.carId === c.id).length;
                 return <ProgressBar key={c.id} label={`${c.plate} (${c.type})`} count={count} total={totalCarBookings} color="bg-teal-500" />;
               })}
             </div>
@@ -2345,7 +2376,7 @@ const Reports = ({ user, tickets, roomBookings, carBookings, foodOrders, rooms, 
       )}
 
       {tab === 'foods' && (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:grid-cols-3">
             <StatCard title="ออเดอร์ทั้งหมด" value={totalFoodOrders} icon={<FileText size={28} />} color="from-amber-500 to-orange-600 text-white shadow-amber-200" />
             <StatCard title="เสร็จสิ้น/ส่งแล้ว" value={approvedFoods} icon={<CheckCircle size={28} />} color="from-emerald-400 to-green-500 text-white shadow-green-200" />
@@ -2616,7 +2647,7 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
             </ul>
             <div className="flex gap-3">
               <input type="text" value={newFoodCategory} onChange={e => setNewFoodCategory(e.target.value)} placeholder="เพิ่มหมวดหมู่อาหารใหม่..." className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all" />
-              <button onClick={handleAddFoodCategory} className="px-5 py-3 bg-amber-500 text-white rounded-2xl font-bold text-sm hover:bg-amber-600 shadow-md active:scale-95 transition-all">เพิ่ม</button>
+              <button onClick={handleAddFoodCategory} className="px-5 py-3 bg-amber-50 text-amber-700 border border-amber-200 rounded-2xl font-bold text-sm hover:bg-amber-100 shadow-sm active:scale-95 transition-all">เพิ่ม</button>
             </div>
           </div>
         )}
@@ -2723,72 +2754,146 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
           </div>
         )}
 
+        {/* จัดการข้อมูลเมนูอาหาร */}
+        {canManageFoods && (
+          <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white xl:col-span-2">
+            <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
+               <div className="p-2 bg-amber-50 text-amber-600 rounded-xl"><Utensils size={20}/></div>
+               <h3 className="text-xl font-bold text-slate-800">ข้อมูลรายการเมนูอาหาร</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 max-h-64 overflow-y-auto pr-2 hide-scrollbar">
+              {foods.map(f => (
+                <div key={f.id} className="flex justify-between items-start p-4 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors group">
+                  <div className="flex gap-3 items-center w-full">
+                    {f.image && f.image !== 'Error uploading image' ? (
+                       <img 
+                         src={f.image.includes('drive.google.com') ? `https://drive.google.com/thumbnail?id=${f.image.match(/\/d\/(.+?)\//)?.[1] || f.image.match(/id=(.+?)$/)?.[1]}&sz=w200` : f.image} 
+                         alt={f.name} 
+                         className="w-12 h-12 rounded-xl object-cover bg-white" 
+                         onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/100x100/f8fafc/64748b?text=Img'; }}
+                       />
+                    ) : (
+                       <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-slate-300 border border-slate-100"><Utensils size={20}/></div>
+                    )}
+                    <div className="flex-1 overflow-hidden">
+                      <div className="text-base font-bold text-slate-800 truncate">{f.name}</div>
+                      <div className="text-xs font-bold text-amber-600 mt-1">{f.price} ฿ <span className="text-slate-400 font-medium ml-1">| หมวดหมู่: {f.category}</span></div>
+                    </div>
+                  </div>
+                  <button onClick={() => {
+                     setFoods(foods.filter(food => food.id !== f.id));
+                     syncToGoogleSheet('deleteFoodItem', { id: f.id });
+                  }} className="text-rose-400 hover:text-rose-600 bg-white p-1.5 rounded-lg shadow-sm group-hover:shadow transition-all ml-2 flex-shrink-0"><X size={16}/></button>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-4 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+              <p className="text-sm font-black text-slate-700 uppercase tracking-widest">เพิ่มเมนูอาหารใหม่</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input type="text" value={newFood.name} onChange={e => setNewFood({...newFood, name: e.target.value})} placeholder="ชื่อเมนูอาหาร" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all sm:col-span-2" />
+                
+                <input type="number" value={newFood.price} onChange={e => setNewFood({...newFood, price: e.target.value})} placeholder="ราคา (บาท)" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all" />
+                <input type="number" value={newFood.maxQuantity} onChange={e => setNewFood({...newFood, maxQuantity: e.target.value})} placeholder="จำนวนสั่งสูงสุดต่อครั้ง (เช่น 50)" className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-medium text-sm transition-all" />
+                
+                <select value={newFood.category} onChange={e => setNewFood({...newFood, category: e.target.value})} className="p-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-500/20 outline-none font-bold text-sm transition-all sm:col-span-2">
+                  <option value="" disabled>เลือกหมวดหมู่อาหาร</option>
+                  {foodCategories.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+
+                <div className="sm:col-span-2 flex items-center gap-4">
+                   <input type="file" accept="image/*" onChange={handleFoodImageUpload} className="flex-1 text-sm text-slate-500 file:mr-4 file:py-3.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200 cursor-pointer" />
+                   {newFood.image && <img src={newFood.image} className="w-12 h-12 rounded-xl object-cover border border-slate-200" alt="Preview"/>}
+                </div>
+
+              </div>
+              <button onClick={handleAddFood} className="w-full mt-2 px-4 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-amber-600 shadow-md active:scale-95 transition-all">บันทึกเมนูอาหาร</button>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
 };
 
-
 // --- Shared Components ---
 
 const StatCard = ({ title, value, icon, color }) => (
-  <div className="bg-white/90 backdrop-blur-xl p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white flex items-center gap-5 hover:-translate-y-1 transition-transform duration-300 print:shadow-none print:border-slate-200 print:rounded-xl print:p-4">
-    <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center bg-gradient-to-br ${color}`}>
-      {icon}
+  <div className={`p-6 rounded-[2rem] bg-gradient-to-br ${color} shadow-lg relative overflow-hidden group`}>
+    <div className="absolute -right-6 -top-6 text-white/10 group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
+      {React.cloneElement(icon, { size: 120 })}
     </div>
-    <div>
-      <p className="text-sm text-slate-500 font-bold tracking-wide uppercase">{title}</p>
-      <p className="text-3xl font-black text-slate-800 leading-tight">{value}</p>
+    <div className="relative z-10">
+      <div className="flex items-center gap-3 text-white/90 mb-4 font-bold text-sm">
+        {React.cloneElement(icon, { size: 20 })}
+        {title}
+      </div>
+      <div className="text-5xl font-black text-white">{value}</div>
     </div>
   </div>
 );
 
 const ProgressBar = ({ label, count, total, color }) => {
-  const percentage = total === 0 ? 0 : Math.round((count / total) * 100);
+  const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
     <div>
-      <div className="flex justify-between text-sm font-bold mb-2">
-        <span className="text-slate-700">{label}</span>
-        <span className="text-slate-500">{count} รายการ ({percentage}%)</span>
+      <div className="flex justify-between text-sm font-bold text-slate-700 mb-2">
+        <span>{label}</span>
+        <span>{count} รายการ ({percentage}%)</span>
       </div>
-      <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200/50">
-        <div className={`${color} h-full rounded-full transition-all duration-1000 ease-out`} style={{ width: `${percentage}%` }}></div>
+      <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+        <div className={`h-full ${color} rounded-full transition-all duration-1000 ease-out`} style={{ width: `${percentage}%` }}></div>
       </div>
     </div>
   );
 };
 
 const ScheduleCalendar = ({ bookings, items, itemKey }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
 
-  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    
+    const days = [];
+    for (let i = 0; i < firstDayIndex; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+    return days;
+  };
 
-  const startDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
-  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
-
-  const days = [];
-  for (let i = 0; i < startDay; i++) days.push(null);
-  for (let i = 1; i <= daysInMonth; i++) days.push(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i));
+  const days = getDaysInMonth(currentDate);
+  const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
 
   return (
-    <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white p-4 sm:p-6 md:p-8 overflow-hidden">
-      <div className="flex justify-between items-center mb-6">
-         <button onClick={prevMonth} className="p-2 sm:p-3 hover:bg-slate-100 rounded-2xl text-slate-600 transition-colors"><ChevronLeft size={24}/></button>
-         <h3 className="text-xl sm:text-2xl font-black text-slate-800">
-           {currentMonth.toLocaleString('th-TH', { month: 'long', year: 'numeric' })}
-         </h3>
-         <button onClick={nextMonth} className="p-2 sm:p-3 hover:bg-slate-100 rounded-2xl text-slate-600 transition-colors"><ChevronRight size={24}/></button>
+    <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-8 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white animate-in fade-in duration-500">
+      <div className="flex items-center justify-between mb-8">
+        <h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+          {monthNames[currentDate.getMonth()]} {currentDate.getFullYear() + 543}
+        </h3>
+        <div className="flex gap-2">
+          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-3 bg-slate-50 text-slate-600 rounded-2xl hover:bg-slate-100 hover:text-slate-800 transition-colors shadow-sm"><ChevronLeft size={20}/></button>
+          <button onClick={() => setCurrentDate(new Date())} className="px-5 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-colors shadow-sm text-sm">เดือนนี้</button>
+          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-3 bg-slate-50 text-slate-600 rounded-2xl hover:bg-slate-100 hover:text-slate-800 transition-colors shadow-sm"><ChevronRight size={20}/></button>
+        </div>
       </div>
-      <div className="w-full overflow-x-auto pb-4" style={{ WebkitOverflowScrolling: 'touch' }}>
-         <div className="grid grid-cols-7 gap-1.5 sm:gap-3 min-w-[700px]">
-            {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map((d, idx) => (
-              <div key={d} className={`text-center font-black py-3 rounded-2xl text-sm ${idx === 0 || idx === 6 ? 'text-rose-400 bg-rose-50/50' : 'text-slate-500 bg-slate-50'}`}>{d}</div>
+
+      <div className="w-full overflow-x-auto pb-4 hide-scrollbar">
+         <div className="min-w-[800px] grid grid-cols-7 gap-3 sm:gap-4 mb-4">
+            {['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'].map(day => (
+               <div key={day} className="text-center font-bold text-slate-400 text-sm py-2 bg-slate-50 rounded-xl">{day}</div>
             ))}
+         </div>
+         <div className="min-w-[800px] grid grid-cols-7 gap-3 sm:gap-4">
             {days.map((day, i) => {
-               if (!day) return <div key={`empty-${i}`} className="p-2 border border-transparent bg-slate-50/30 rounded-2xl"></div>;
+               if (!day) return <div key={i} className="min-h-[120px] bg-transparent border-2 border-dashed border-slate-100 rounded-[1.5rem]"></div>;
                
-               const isToday = day.toDateString() === new Date().toDateString();
+               const isToday = new Date().toDateString() === day.toDateString();
                const dayBookings = bookings.filter(b => {
                   const bDate = new Date(b.startTime);
                   return bDate.getDate() === day.getDate() && 
