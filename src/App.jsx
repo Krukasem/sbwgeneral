@@ -5,10 +5,13 @@ import {
   MapPin, AlertCircle, FileText, Check, ChevronRight, ChevronLeft,
   BarChart, Lock, Eye, Image as ImageIcon, Printer, DownloadCloud,
   Utensils, ShoppingCart, Minus, Mail, ShieldAlert, Filter, ArrowUpDown,
-  CarFront, DoorOpen, Calendar, Edit
+  Edit, PlusCircle, RefreshCw
 } from 'lucide-react';
 
-// --- Mock Data ---
+// ==========================================
+// 1. MOCK DATA & CONFIGURATION
+// ==========================================
+
 const initialCategories = [
   { id: '1', name: 'ไฟฟ้า' },
   { id: '2', name: 'ประปา' },
@@ -43,7 +46,12 @@ const initialAdmins = [
 ];
 
 // --- Google Sheets API Config ---
+// แทนที่ URL นี้ด้วย URL ของ Web App ที่ได้จาก Google Apps Script
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw7aZEV_BwfsqVMLsL0P8zc9S7HpwdRmqJqLM1gzZsP94S-7rvgslpTzlUHhPmYFsgn/exec";
+
+// ==========================================
+// 2. SHARED UTILITIES & COMPONENTS
+// ==========================================
 
 const syncToGoogleSheet = (action, data) => {
   if(!SCRIPT_URL || SCRIPT_URL.includes("ใส่_URL")) return;
@@ -53,170 +61,6 @@ const syncToGoogleSheet = (action, data) => {
     body: JSON.stringify({ action, data })
   }).catch(err => console.error("Sheet sync error:", err));
 };
-
-export default function App() {
-  const [user, setUser] = useState(null); 
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const [tickets, setTickets] = useState([]);
-  const [roomBookings, setRoomBookings] = useState([]);
-  const [carBookings, setCarBookings] = useState([]);
-  const [foodOrders, setFoodOrders] = useState([]);
-  const [admins, setAdmins] = useState(initialAdmins);
-  const [isLoadingDB, setIsLoadingDB] = useState(true);
-  
-  const [categories, setCategories] = useState(initialCategories);
-  const [rooms, setRooms] = useState(initialRooms);
-  const [cars, setCars] = useState(initialCars);
-  const [foodCategories, setFoodCategories] = useState(initialFoodCategories);
-  const [foods, setFoods] = useState(initialFoods);
-
-  useEffect(() => {
-    if (!SCRIPT_URL || SCRIPT_URL.includes("ใส่_URL")) {
-      setIsLoadingDB(false);
-      return;
-    }
-
-    fetch(`${SCRIPT_URL}?action=getAll`)
-      .then(res => res.json())
-      .then(data => {
-        if(data.tickets) setTickets(data.tickets.reverse());
-        if(data.roomBookings) setRoomBookings(data.roomBookings.reverse());
-        if(data.carBookings) setCarBookings(data.carBookings.reverse());
-        if(data.foodOrders) setFoodOrders(data.foodOrders.reverse());
-        
-        if(data.foodCategories) setFoodCategories(data.foodCategories);
-        if(data.foods) setFoods(data.foods);
-        if(data.rooms) setRooms(data.rooms);
-        if(data.cars) setCars(data.cars);
-        if(data.admins && data.admins.length > 0) setAdmins(data.admins);
-        setIsLoadingDB(false);
-      })
-      .catch(err => {
-        console.error("Fetch API error:", err);
-        setIsLoadingDB(false);
-      });
-  }, []);
-
-  const handleAdminLogin = (username, password) => {
-    const adminMatch = admins.find(a => a.username === username && a.password === password);
-    if (adminMatch) {
-      const perms = adminMatch.permissions ? (typeof adminMatch.permissions === 'string' ? adminMatch.permissions.split(',') : adminMatch.permissions) : ['all'];
-      setUser({ ...adminMatch, role: 'admin', permissions: perms });
-      setActiveTab('dashboard');
-      return true;
-    }
-    return false;
-  };
-
-  const handleGoogleLogin = (email) => {
-    const namePrefix = email.split('@')[0];
-    setUser({ id: 'u_' + Date.now(), name: namePrefix, email: email, role: 'user' });
-    setActiveTab('dashboard');
-  };
-
-  const handleLogout = () => setUser(null);
-
-  const navigate = (tab) => {
-    setActiveTab(tab);
-    setIsMobileMenuOpen(false);
-  };
-
-  if (!user) {
-    return <LoginScreen onGoogleLogin={handleGoogleLogin} onAdminLogin={handleAdminLogin} />;
-  }
-
-  const canManageApprovals = user.role === 'admin' && (user.permissions?.includes('all') || user.permissions?.includes('rooms') || user.permissions?.includes('cars') || user.permissions?.includes('foods'));
-  const isAdmin = user.role === 'admin';
-
-  return (
-    <div className="flex h-screen bg-slate-50 text-slate-800 font-sans relative selection:bg-indigo-100 selection:text-indigo-900">
-      <div className={`fixed inset-0 z-20 bg-slate-900/40 backdrop-blur-sm transition-opacity lg:hidden print:hidden ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsMobileMenuOpen(false)}></div>
-      
-      <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transform transition-transform duration-300 ease-out lg:translate-x-0 flex flex-col print:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 flex flex-col items-center justify-center border-b border-slate-100 text-center gap-3">
-          <img src="https://sbwinnotech.vercel.app/logo-sbw-new.png" alt="SBW Logo" className="h-16 w-auto hover:scale-105 transition-transform duration-300" />
-          <div>
-            <h1 className="font-black text-lg text-slate-800 tracking-tight">SBW General Portal</h1>
-            <p className="text-[11px] font-bold text-slate-500 mt-0.5">ฝ่ายบริหารทั่วไป โรงเรียนสระบุรีวิทยาคม</p>
-          </div>
-        </div>
-        <div className="p-5 flex flex-col gap-2 flex-1 overflow-y-auto hide-scrollbar">
-          <NavItem icon={<LayoutDashboard />} label="ภาพรวมระบบ" active={activeTab === 'dashboard'} onClick={() => navigate('dashboard')} />
-          <NavItem icon={<Wrench />} label="ระบบแจ้งซ่อม" active={activeTab === 'helpdesk'} onClick={() => navigate('helpdesk')} />
-          <NavItem icon={<CalendarDays />} label="จองห้องประชุม" active={activeTab === 'rooms'} onClick={() => navigate('rooms')} />
-          <NavItem icon={<Car />} label="จองรถโรงเรียน" active={activeTab === 'cars'} onClick={() => navigate('cars')} />
-          <NavItem icon={<Utensils />} label="สั่งอาหาร/เครื่องดื่ม" active={activeTab === 'food'} onClick={() => navigate('food')} />
-          
-          {isAdmin && (
-            <div className="mt-6">
-              <div className="px-4 mb-3 text-xs font-bold text-indigo-400/80 uppercase tracking-widest">ส่วนผู้ดูแลระบบ</div>
-              <div className="space-y-2">
-                {canManageApprovals && <NavItem icon={<CheckCircle />} label="ระบบอนุมัติ" active={activeTab === 'approvals'} onClick={() => navigate('approvals')} />}
-                <NavItem icon={<BarChart />} label="รายงานสรุปผล" active={activeTab === 'reports'} onClick={() => navigate('reports')} />
-                <NavItem icon={<Settings />} label="ตั้งค่าระบบ" active={activeTab === 'settings'} onClick={() => navigate('settings')} />
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="p-5 border-t border-slate-100 bg-white/50">
-          <div className="flex items-center gap-4 mb-5 px-2">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm ${user.role === 'admin' ? 'bg-gradient-to-br from-rose-400 to-red-500 text-white shadow-red-200' : 'bg-gradient-to-br from-indigo-400 to-blue-500 text-white shadow-blue-200'}`}>
-              {user.role === 'admin' ? 'A' : user.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-bold text-slate-800 truncate">{user.name}</p>
-              <p className="text-xs text-slate-500 truncate">{user.role === 'admin' ? 'สิทธิ์การจัดการระบบ' : user.email}</p>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-rose-600 bg-rose-50 rounded-2xl hover:bg-rose-100 hover:text-rose-700 transition-all duration-200 active:scale-95">
-            <LogOut size={18} /> ออกจากระบบ
-          </button>
-        </div>
-      </aside>
-
-      <main className="flex-1 flex flex-col h-screen overflow-hidden print:overflow-visible print:h-auto">
-        <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 flex items-center justify-between lg:hidden shadow-sm print:hidden sticky top-0 z-10">
-          <div className="flex items-center gap-3">
-            <img src="https://sbwinnotech.vercel.app/logo-sbw-new.png" alt="SBW Logo" className="h-10 w-auto drop-shadow-sm" />
-            <div className="flex flex-col">
-              <span className="font-black text-slate-800 tracking-tight leading-none">SBW General Portal</span>
-              <span className="text-[10px] font-bold text-slate-500 mt-0.5">ฝ่ายบริหารทั่วไป โรงเรียนสระบุรีวิทยาคม</span>
-            </div>
-          </div>
-          <button onClick={() => setIsMobileMenuOpen(true)} className="p-2.5 bg-slate-100 rounded-xl text-slate-600 hover:bg-slate-200 active:scale-95 transition-all">
-            <Menu size={22} />
-          </button>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 print:p-0 hide-scrollbar scroll-smooth">
-          <div className="max-w-7xl mx-auto space-y-8 print:max-w-none">
-            {isLoadingDB ? (
-              <div className="flex flex-col items-center justify-center h-64 space-y-4">
-                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                <p className="text-slate-500 font-bold">กำลังเชื่อมต่อฐานข้อมูล Google Sheets...</p>
-              </div>
-            ) : (
-              <>
-                {activeTab === 'dashboard' && <Dashboard user={user} tickets={tickets} roomBookings={roomBookings} carBookings={carBookings} foodOrders={foodOrders} />}
-                {activeTab === 'helpdesk' && <Helpdesk user={user} tickets={tickets} setTickets={setTickets} categories={categories} />}
-                {activeTab === 'rooms' && <RoomBooking user={user} rooms={rooms} roomBookings={roomBookings} setRoomBookings={setRoomBookings} />}
-                {activeTab === 'cars' && <CarBooking user={user} cars={cars} carBookings={carBookings} setCarBookings={setCarBookings} />}
-                {activeTab === 'food' && <FoodOrdering user={user} foods={foods} foodCategories={foodCategories} foodOrders={foodOrders} setFoodOrders={setFoodOrders} />}
-                {activeTab === 'approvals' && canManageApprovals && <Approvals user={user} roomBookings={roomBookings} setRoomBookings={setRoomBookings} carBookings={carBookings} setCarBookings={setCarBookings} foodOrders={foodOrders} setFoodOrders={setFoodOrders} rooms={rooms} cars={cars} />}
-                {activeTab === 'reports' && user.role === 'admin' && <Reports user={user} tickets={tickets} roomBookings={roomBookings} carBookings={carBookings} foodOrders={foodOrders} rooms={rooms} cars={cars} foods={foods} categories={categories} />}
-                {activeTab === 'settings' && user.role === 'admin' && <SettingsView user={user} categories={categories} setCategories={setCategories} rooms={rooms} setRooms={setRooms} cars={cars} setCars={setCars} foodCategories={foodCategories} setFoodCategories={setFoodCategories} foods={foods} setFoods={setFoods} admins={admins} setAdmins={setAdmins} loggedInUser={user} />}
-              </>
-            )}
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-}
-
-// --- Shared Components ---
 
 const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -260,6 +104,406 @@ const NavItem = ({ icon, label, active, onClick }) => (
     <span className="tracking-wide">{label}</span>
   </button>
 );
+
+const StatCard = ({ title, value, icon, color }) => (
+  <div className={`p-6 rounded-[2rem] bg-gradient-to-br ${color} shadow-lg relative overflow-hidden group`}>
+    <div className="absolute -right-6 -top-6 text-white/10 group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
+      {React.cloneElement(icon, { size: 120 })}
+    </div>
+    <div className="relative z-10">
+      <div className="flex items-center gap-3 text-white/90 mb-4 font-bold text-sm">
+        {React.cloneElement(icon, { size: 20 })}
+        {title}
+      </div>
+      <div className="text-5xl font-black text-white">{value}</div>
+    </div>
+  </div>
+);
+
+const ProgressBar = ({ label, count, total, color }) => {
+  const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div>
+      <div className="flex justify-between text-sm font-bold text-slate-700 mb-2">
+        <span>{label}</span>
+        <span>{count} รายการ ({percentage}%)</span>
+      </div>
+      <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+        <div className={`h-full ${color} rounded-full transition-all duration-1000 ease-out`} style={{ width: `${percentage}%` }}></div>
+      </div>
+    </div>
+  );
+};
+
+const ScheduleCalendar = ({ bookings, items, itemKey, onEventClick, onDayClick }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    
+    const days = [];
+    for (let i = 0; i < firstDayIndex; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+    return days;
+  };
+
+  const days = getDaysInMonth(currentDate);
+  const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+
+  return (
+    <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-8 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white animate-in fade-in duration-500">
+      <div className="flex items-center justify-between mb-8">
+        <h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+          {monthNames[currentDate.getMonth()]} {currentDate.getFullYear() + 543}
+        </h3>
+        <div className="flex gap-2">
+          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-3 bg-slate-50 text-slate-600 rounded-2xl hover:bg-slate-100 hover:text-slate-800 transition-colors shadow-sm"><ChevronLeft size={20}/></button>
+          <button onClick={() => setCurrentDate(new Date())} className="px-5 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-colors shadow-sm text-sm">เดือนนี้</button>
+          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-3 bg-slate-50 text-slate-600 rounded-2xl hover:bg-slate-100 hover:text-slate-800 transition-colors shadow-sm"><ChevronRight size={20}/></button>
+        </div>
+      </div>
+
+      <div className="w-full overflow-x-auto pb-4 hide-scrollbar">
+         <div className="min-w-[800px] grid grid-cols-7 gap-3 sm:gap-4 mb-4">
+            {['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'].map(day => (
+               <div key={day} className="text-center font-bold text-slate-400 text-sm py-2 bg-slate-50 rounded-xl">{day}</div>
+            ))}
+         </div>
+         <div className="min-w-[800px] grid grid-cols-7 gap-3 sm:gap-4">
+            {days.map((day, i) => {
+               if (!day) return <div key={i} className="min-h-[120px] bg-transparent border-2 border-dashed border-slate-100 rounded-[1.5rem]"></div>;
+               
+               const isToday = new Date().toDateString() === day.toDateString();
+               const dayBookings = bookings.filter(b => {
+                  const bDate = new Date(b.startTime);
+                  return bDate.getDate() === day.getDate() && 
+                         bDate.getMonth() === day.getMonth() && 
+                         bDate.getFullYear() === day.getFullYear() && 
+                         b.status !== 'rejected' && 
+                         b.status !== 'cancelled';
+               });
+
+               return (
+                  <div key={i} onClick={() => onDayClick && onDayClick(day)} className={`min-h-[120px] p-2.5 sm:p-3 border-2 rounded-[1.5rem] transition-all cursor-pointer ${isToday ? 'border-indigo-400 bg-indigo-50/30 shadow-sm' : 'border-slate-100 bg-white hover:border-indigo-300 hover:shadow-md'}`}>
+                     <div className={`text-right text-sm font-black mb-2 ${isToday ? 'text-indigo-600' : 'text-slate-600'}`}>
+                       {day.getDate()}
+                     </div>
+                     <div className="space-y-2 mt-1">
+                        {dayBookings.map(b => {
+                           const item = items.find(itm => itm.id === b[itemKey]);
+                           const isApproved = b.status === 'approved';
+                           return (
+                              <div key={b.id} 
+                                onClick={(e) => { e.stopPropagation(); onEventClick && onEventClick(b); }}
+                                className={`text-[10px] sm:text-xs p-2 rounded-xl border-l-4 truncate cursor-pointer transition-all shadow-sm hover:scale-[1.02]
+                                  ${isApproved ? 'bg-emerald-50/80 text-emerald-700 border-emerald-500 border-t-transparent border-r-transparent border-b-transparent hover:bg-emerald-100' 
+                                               : 'bg-amber-50/80 text-amber-700 border-amber-500 border-t-transparent border-r-transparent border-b-transparent hover:bg-amber-100'}`} 
+                                title={`[${isApproved ? 'อนุมัติแล้ว' : 'รออนุมัติ'}] ${b.title} - ${item?.name || item?.plate}`}
+                              >
+                                 <div className="font-bold">{new Date(b.startTime).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
+                                 <div className="truncate font-medium opacity-90 mt-0.5">{item?.name || item?.plate}</div>
+                              </div>
+                           )
+                        })}
+                     </div>
+                  </div>
+               );
+            })}
+         </div>
+      </div>
+    </div>
+  );
+};
+
+const StatusBadge = ({ status, type }) => {
+  let style = "px-3 py-1.5 text-xs font-bold rounded-xl flex items-center gap-1.5 w-max tracking-wide";
+  let text = "";
+  let icon = null;
+
+  if (type === 'ticket') {
+    switch(status) {
+      case 'pending': style += " bg-rose-50 text-rose-600 border border-rose-100"; text = "รอรับงาน"; icon = <Clock size={14}/>; break;
+      case 'in_progress': style += " bg-amber-50 text-amber-600 border border-amber-100"; text = "กำลังดำเนินการ"; icon = <Wrench size={14}/>; break;
+      case 'completed': style += " bg-emerald-50 text-emerald-600 border border-emerald-100"; text = "เสร็จสิ้น"; icon = <CheckCircle size={14}/>; break;
+      case 'cancelled': style += " bg-slate-100 text-slate-500 border border-slate-200"; text = "ยกเลิก"; icon = <XCircle size={14}/>; break;
+      default: text = status;
+    }
+  } else if (type === 'booking') {
+    switch(status) {
+      case 'pending': style += " bg-amber-50 text-amber-600 border border-amber-100"; text = "รออนุมัติ"; icon = <Clock size={14}/>; break;
+      case 'approved': style += " bg-emerald-50 text-emerald-600 border border-emerald-100"; text = "อนุมัติแล้ว"; icon = <CheckCircle size={14}/>; break;
+      case 'rejected': style += " bg-rose-50 text-rose-600 border border-rose-100"; text = "ไม่อนุมัติ"; icon = <XCircle size={14}/>; break;
+      case 'cancelled': style += " bg-slate-100 text-slate-500 border border-slate-200"; text = "ยกเลิก"; icon = <XCircle size={14}/>; break;
+      default: text = status;
+    }
+  } else if (type === 'order') {
+    switch(status) {
+      case 'pending': style += " bg-amber-50 text-amber-600 border border-amber-100"; text = "รอรับออเดอร์"; icon = <Clock size={14}/>; break;
+      case 'approved': style += " bg-emerald-50 text-emerald-600 border border-emerald-100"; text = "จัดส่งเรียบร้อย"; icon = <CheckCircle size={14}/>; break;
+      case 'rejected': style += " bg-rose-50 text-rose-600 border border-rose-100"; text = "ยกเลิกออเดอร์"; icon = <XCircle size={14}/>; break;
+      case 'cancelled': style += " bg-slate-100 text-slate-500 border border-slate-200"; text = "ยกเลิกโดย Admin"; icon = <XCircle size={14}/>; break;
+      default: text = status;
+    }
+  }
+
+  return <span className={style}>{icon} {text}</span>;
+};
+
+// ==========================================
+// 3. MAIN APPLICATION COMPONENT
+// ==========================================
+
+export default function App() {
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('sbw_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  }); 
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const [tickets, setTickets] = useState([]);
+  const [roomBookings, setRoomBookings] = useState([]);
+  const [carBookings, setCarBookings] = useState([]);
+  const [foodOrders, setFoodOrders] = useState([]);
+  const [admins, setAdmins] = useState(initialAdmins);
+  const [isLoadingDB, setIsLoadingDB] = useState(true);
+  
+  const [categories, setCategories] = useState(initialCategories);
+  const [rooms, setRooms] = useState(initialRooms);
+  const [cars, setCars] = useState(initialCars);
+  const [foodCategories, setFoodCategories] = useState(initialFoodCategories);
+  const [foods, setFoods] = useState(initialFoods);
+
+  const fetchData = async () => {
+    if (!SCRIPT_URL || SCRIPT_URL.includes("ใส่_URL")) {
+      setIsLoadingDB(false);
+      return;
+    }
+    setIsRefreshing(true);
+    try {
+      const res = await fetch(`${SCRIPT_URL}?action=getAll`);
+      const data = await res.json();
+      if(data.tickets) setTickets(data.tickets.reverse());
+      if(data.roomBookings) setRoomBookings(data.roomBookings.reverse());
+      if(data.carBookings) setCarBookings(data.carBookings.reverse());
+      if(data.foodOrders) setFoodOrders(data.foodOrders.reverse());
+      
+      if(data.foodCategories) setFoodCategories(data.foodCategories);
+      if(data.foods) setFoods(data.foods);
+      if(data.rooms) setRooms(data.rooms);
+      if(data.cars) setCars(data.cars);
+      if(data.admins && data.admins.length > 0) setAdmins(data.admins);
+    } catch(err) {
+      console.error("Fetch API error:", err);
+    } finally {
+      setIsLoadingDB(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleAdminLogin = (username, password) => {
+    const adminMatch = admins.find(a => a.username === username && a.password === password);
+    if (adminMatch) {
+      const perms = adminMatch.permissions ? (typeof adminMatch.permissions === 'string' ? adminMatch.permissions.split(',') : adminMatch.permissions) : ['all'];
+      const userData = { ...adminMatch, role: 'admin', permissions: perms };
+      setUser(userData);
+      localStorage.setItem('sbw_user', JSON.stringify(userData));
+      setActiveTab('dashboard');
+      return true;
+    }
+    return false;
+  };
+
+  const handleGoogleLogin = (email) => {
+    const namePrefix = email.split('@')[0];
+    const newUser = { id: 'u_' + Date.now(), name: namePrefix, email: email, role: 'user' };
+    setUser(newUser);
+    localStorage.setItem('sbw_user', JSON.stringify(newUser));
+    setActiveTab('dashboard');
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('sbw_user');
+  };
+
+  const navigate = (tab) => {
+    setActiveTab(tab);
+    setIsMobileMenuOpen(false);
+  };
+
+  if (!user) {
+    return <LoginScreen onGoogleLogin={handleGoogleLogin} onAdminLogin={handleAdminLogin} />;
+  }
+
+  const canManageApprovals = user.role === 'admin' && (user.permissions?.includes('all') || user.permissions?.includes('rooms') || user.permissions?.includes('cars') || user.permissions?.includes('foods'));
+  const isAdmin = user.role === 'admin';
+
+  return (
+    <div className="flex h-screen bg-slate-50 text-slate-800 font-sans relative selection:bg-indigo-100 selection:text-indigo-900">
+      <div className={`fixed inset-0 z-20 bg-slate-900/40 backdrop-blur-sm transition-opacity lg:hidden print:hidden ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsMobileMenuOpen(false)}></div>
+      
+      <Sidebar 
+        user={user} 
+        activeTab={activeTab} 
+        navigate={navigate} 
+        isMobileMenuOpen={isMobileMenuOpen} 
+        handleLogout={handleLogout} 
+        canManageApprovals={canManageApprovals} 
+        isAdmin={isAdmin}
+        fetchData={fetchData}
+        isRefreshing={isRefreshing}
+      />
+
+      <main className="flex-1 flex flex-col h-screen overflow-hidden print:overflow-visible print:h-auto">
+        <MobileHeader setIsMobileMenuOpen={setIsMobileMenuOpen} />
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 print:p-0 hide-scrollbar scroll-smooth">
+          <div className="max-w-7xl mx-auto space-y-8 print:max-w-none">
+            {isLoadingDB ? (
+              <div className="flex flex-col items-center justify-center h-64 space-y-4">
+                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                <p className="text-slate-500 font-bold">กำลังเชื่อมต่อฐานข้อมูล Google Sheets...</p>
+              </div>
+            ) : (
+              <ContentArea 
+                activeTab={activeTab} 
+                user={user} 
+                tickets={tickets} setTickets={setTickets}
+                roomBookings={roomBookings} setRoomBookings={setRoomBookings}
+                carBookings={carBookings} setCarBookings={setCarBookings}
+                foodOrders={foodOrders} setFoodOrders={setFoodOrders}
+                categories={categories} setCategories={setCategories}
+                rooms={rooms} setRooms={setRooms}
+                cars={cars} setCars={setCars}
+                foodCategories={foodCategories} setFoodCategories={setFoodCategories}
+                foods={foods} setFoods={setFoods}
+                admins={admins} setAdmins={setAdmins}
+                canManageApprovals={canManageApprovals}
+              />
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ==========================================
+// 4. LAYOUT COMPONENTS
+// ==========================================
+
+const Sidebar = ({ user, activeTab, navigate, isMobileMenuOpen, handleLogout, canManageApprovals, isAdmin, fetchData, isRefreshing }) => (
+  <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transform transition-transform duration-300 ease-out lg:translate-x-0 flex flex-col print:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+    <div className="p-6 flex flex-col items-center justify-center border-b border-slate-100 text-center gap-3">
+      <img src="https://sbwinnotech.vercel.app/logo-sbw-new.png" alt="SBW Logo" className="h-16 w-auto hover:scale-105 transition-transform duration-300" />
+      <div>
+        <h1 className="font-black text-lg text-slate-800 tracking-tight">SBW General Portal</h1>
+        <p className="text-[11px] font-bold text-slate-500 mt-0.5">ฝ่ายบริหารทั่วไป โรงเรียนสระบุรีวิทยาคม</p>
+      </div>
+    </div>
+    <div className="p-5 flex flex-col gap-2 flex-1 overflow-y-auto hide-scrollbar">
+      <NavItem icon={<LayoutDashboard />} label="ภาพรวมระบบ" active={activeTab === 'dashboard'} onClick={() => navigate('dashboard')} />
+      <NavItem icon={<Wrench />} label="ระบบแจ้งซ่อม" active={activeTab === 'helpdesk'} onClick={() => navigate('helpdesk')} />
+      <NavItem icon={<CalendarDays />} label="จองห้องประชุม" active={activeTab === 'rooms'} onClick={() => navigate('rooms')} />
+      <NavItem icon={<Car />} label="จองรถโรงเรียน" active={activeTab === 'cars'} onClick={() => navigate('cars')} />
+      <NavItem icon={<Utensils />} label="สั่งอาหาร/เครื่องดื่ม" active={activeTab === 'food'} onClick={() => navigate('food')} />
+      
+      {isAdmin && (
+        <div className="mt-6">
+          <div className="px-4 mb-3 text-xs font-bold text-indigo-400/80 uppercase tracking-widest">ส่วนผู้ดูแลระบบ</div>
+          <div className="space-y-2">
+            {canManageApprovals && <NavItem icon={<CheckCircle />} label="ระบบอนุมัติ" active={activeTab === 'approvals'} onClick={() => navigate('approvals')} />}
+            <NavItem icon={<BarChart />} label="รายงานสรุปผล" active={activeTab === 'reports'} onClick={() => navigate('reports')} />
+            <NavItem icon={<Settings />} label="ตั้งค่าระบบ" active={activeTab === 'settings'} onClick={() => navigate('settings')} />
+          </div>
+        </div>
+      )}
+    </div>
+    <div className="p-5 border-t border-slate-100 bg-white/50">
+      <div className="flex items-center gap-4 mb-5 px-2">
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm ${user.role === 'admin' ? 'bg-gradient-to-br from-rose-400 to-red-500 text-white shadow-red-200' : 'bg-gradient-to-br from-indigo-400 to-blue-500 text-white shadow-blue-200'}`}>
+          {user.role === 'admin' ? 'A' : user.name.charAt(0).toUpperCase()}
+        </div>
+        <div className="overflow-hidden">
+          <p className="text-sm font-bold text-slate-800 truncate">{user.name}</p>
+          <p className="text-xs text-slate-500 truncate">{user.role === 'admin' ? 'สิทธิ์การจัดการระบบ' : user.email}</p>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <button onClick={fetchData} disabled={isRefreshing} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all shadow-sm active:scale-95">
+          <RefreshCw size={16} className={isRefreshing ? "animate-spin text-blue-500" : ""} /> อัปเดตข้อมูลล่าสุด
+        </button>
+        <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-rose-600 bg-rose-50 rounded-2xl hover:bg-rose-100 hover:text-rose-700 transition-all duration-200 active:scale-95">
+          <LogOut size={18} /> ออกจากระบบ
+        </button>
+      </div>
+    </div>
+  </aside>
+);
+
+const MobileHeader = ({ setIsMobileMenuOpen }) => (
+  <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 flex items-center justify-between lg:hidden shadow-sm print:hidden sticky top-0 z-10">
+    <div className="flex items-center gap-3">
+      <img src="https://sbwinnotech.vercel.app/logo-sbw-new.png" alt="SBW Logo" className="h-10 w-auto drop-shadow-sm" />
+      <div className="flex flex-col">
+        <span className="font-black text-slate-800 tracking-tight leading-none">SBW General Portal</span>
+        <span className="text-[10px] font-bold text-slate-500 mt-0.5">ฝ่ายบริหารทั่วไป</span>
+      </div>
+    </div>
+    <button onClick={() => setIsMobileMenuOpen(true)} className="p-2.5 bg-slate-100 rounded-xl text-slate-600 hover:bg-slate-200 active:scale-95 transition-all">
+      <Menu size={22} />
+    </button>
+  </header>
+);
+
+const ContentArea = ({ 
+  activeTab, user, 
+  tickets, setTickets, 
+  roomBookings, setRoomBookings, 
+  carBookings, setCarBookings, 
+  foodOrders, setFoodOrders, 
+  categories, setCategories, 
+  rooms, setRooms, 
+  cars, setCars, 
+  foodCategories, setFoodCategories, 
+  foods, setFoods, 
+  admins, setAdmins, 
+  canManageApprovals 
+}) => {
+  switch (activeTab) {
+    case 'dashboard':
+      return <Dashboard user={user} tickets={tickets} roomBookings={roomBookings} carBookings={carBookings} foodOrders={foodOrders} />;
+    case 'helpdesk':
+      return <Helpdesk user={user} tickets={tickets} setTickets={setTickets} categories={categories} />;
+    case 'rooms':
+      return <RoomBooking user={user} rooms={rooms} roomBookings={roomBookings} setRoomBookings={setRoomBookings} />;
+    case 'cars':
+      return <CarBooking user={user} cars={cars} carBookings={carBookings} setCarBookings={setCarBookings} />;
+    case 'food':
+      return <FoodOrdering user={user} foods={foods} foodCategories={foodCategories} foodOrders={foodOrders} setFoodOrders={setFoodOrders} />;
+    case 'approvals':
+      return canManageApprovals ? <Approvals user={user} roomBookings={roomBookings} setRoomBookings={setRoomBookings} carBookings={carBookings} setCarBookings={setCarBookings} foodOrders={foodOrders} setFoodOrders={setFoodOrders} rooms={rooms} cars={cars} /> : null;
+    case 'reports':
+      return user.role === 'admin' ? <Reports user={user} tickets={tickets} roomBookings={roomBookings} carBookings={carBookings} foodOrders={foodOrders} rooms={rooms} cars={cars} foods={foods} categories={categories} /> : null;
+    case 'settings':
+      return user.role === 'admin' ? <SettingsView user={user} categories={categories} setCategories={setCategories} rooms={rooms} setRooms={setRooms} cars={cars} setCars={setCars} foodCategories={foodCategories} setFoodCategories={setFoodCategories} foods={foods} setFoods={setFoods} admins={admins} setAdmins={setAdmins} loggedInUser={user} /> : null;
+    default:
+      return <Dashboard user={user} tickets={tickets} roomBookings={roomBookings} carBookings={carBookings} foodOrders={foodOrders} />;
+  }
+};
+
+// ==========================================
+// 5. VIEW COMPONENTS (Dashboard, Helpdesk, etc.)
+// ==========================================
 
 const LoginScreen = ({ onGoogleLogin, onAdminLogin }) => {
   const [view, setView] = useState('main'); 
@@ -348,8 +592,6 @@ const LoginScreen = ({ onGoogleLogin, onAdminLogin }) => {
     </div>
   );
 };
-
-// --- Sub Views ---
 
 const Dashboard = ({ user, tickets, roomBookings, carBookings, foodOrders }) => {
   const pendingTickets = tickets.filter(t => t.status === 'pending').length;
@@ -788,8 +1030,12 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
   const [view, setView] = useState('calendar'); 
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', title: '', startTime: '', endTime: '', details: '' });
+  const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', title: '', startTime: '', endTime: '', details: '', attachment: null });
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [showResourceSelect, setShowResourceSelect] = useState(false);
+  const [selectedDateForBooking, setSelectedDateForBooking] = useState(null);
   
   // States for advanced filtering
   const [filterRoom, setFilterRoom] = useState('all');
@@ -832,9 +1078,27 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
     setSelectedRoom(room); setView('book'); setErrorMsg('');
   };
 
-  const viewDetails = (booking) => {
+  const handleDayClick = (day) => {
+    setSelectedDateForBooking(day);
+    setShowResourceSelect(true);
+  };
+
+  const handleEventClick = (booking) => {
     setSelectedBooking(booking);
     setView('detail');
+  };
+
+  const handleSelectResourceForBooking = (room) => {
+    if (!selectedDateForBooking) return;
+    const dateString = selectedDateForBooking.toLocaleDateString('en-CA');
+    setFormData({
+      ...formData,
+      startTime: `${dateString}T08:30`,
+      endTime: `${dateString}T16:30`
+    });
+    setSelectedRoom(room);
+    setShowResourceSelect(false);
+    setView('book');
   };
 
   return (
@@ -854,7 +1118,32 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
         )}
       </div>
 
-      {view === 'calendar' && <ScheduleCalendar bookings={roomBookings} items={rooms} itemKey="roomId" />}
+      {view === 'calendar' && <ScheduleCalendar bookings={roomBookings} items={rooms} itemKey="roomId" onDayClick={handleDayClick} onEventClick={handleEventClick} />}
+
+      {showResourceSelect && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowResourceSelect(false)}>
+          <div className="bg-white rounded-[2rem] p-6 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+              <h3 className="text-xl font-black text-slate-800">เลือกห้องประชุมเพื่อจอง</h3>
+              <button onClick={() => setShowResourceSelect(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+            </div>
+            <p className="text-sm text-indigo-600 bg-indigo-50 px-3 py-2 rounded-xl font-bold mb-4 flex items-center gap-2">
+               <CalendarDays size={16}/> สำหรับวันที่: {selectedDateForBooking?.toLocaleDateString('th-TH', { dateStyle: 'long' })}
+            </p>
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2 hide-scrollbar">
+              {rooms.map(room => (
+                <button key={room.id} onClick={() => handleSelectResourceForBooking(room)} className="w-full text-left p-4 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:shadow-md hover:bg-indigo-50/30 transition-all group">
+                  <div className="font-bold text-slate-800 group-hover:text-indigo-700 flex justify-between items-center">
+                     {room.name}
+                     <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500" />
+                  </div>
+                  <div className="text-xs font-medium text-slate-500 mt-1">ความจุ {room.capacity} ท่าน</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {view === 'list' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
@@ -1071,30 +1360,28 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
                   {paginatedBookings.map((b, index) => {
                     const room = rooms.find(r => r.id === b.roomId);
                     return (
-                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => viewDetails(b)}>
+                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => handleEventClick(b)}>
                       <td className="p-6 text-center font-bold text-slate-400">
                         {((currentPage - 1) * itemsPerPage) + index + 1}
                       </td>
-                      {/* --- เพิ่มคอลัมน์ หัวข้อ / ห้อง ที่หายไป --- */}
                       <td className="p-6">
                         <div className="font-bold text-slate-800 text-base">{b.title}</div>
                         <div className="text-sm font-medium text-indigo-600 mt-1">{room?.name || 'ไม่ระบุห้อง'}</div>
                       </td>
-                      {/* ------------------------------------ */}
                       <td className="p-6">
                         <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
                         <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
                       </td>
                       <td className="p-6"><StatusBadge status={b.status} type="booking" /></td>
                       <td className="p-6 text-center">
-                        <button onClick={(e) => { e.stopPropagation(); viewDetails(b); }} className="px-4 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm">
+                        <button onClick={(e) => { e.stopPropagation(); handleEventClick(b); }} className="px-4 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm">
                            ดูรายละเอียด
                         </button>
                       </td>
                     </tr>
                   )})}
                   {paginatedBookings.length === 0 && (
-                    <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลตามเงื่อนไขที่กรอง</td></tr>
+                    <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลตามเงื่อนไขที่กรอง</td></tr>
                   )}
                 </tbody>
             </table>
@@ -1110,11 +1397,14 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
   const [view, setView] = useState('calendar'); 
   const [selectedCar, setSelectedCar] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', title: '', destination: '', passengers: 1, startTime: '', endTime: '', attachment: null, selfDrive: false });
+  const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', title: '', destination: '', passengers: 1, selfDrive: false, startTime: '', endTime: '', attachment: null });
   const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-
-  // Filtering states
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [showResourceSelect, setShowResourceSelect] = useState(false);
+  const [selectedDateForBooking, setSelectedDateForBooking] = useState(null);
+  
+  // States for advanced filtering
   const [filterCar, setFilterCar] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDate, setFilterDate] = useState('');
@@ -1124,84 +1414,74 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
 
   useEffect(() => { setCurrentPage(1); }, [filterCar, filterStatus, filterDate, sortOrder]);
 
-  const checkAvailability = (carId, start, end, selfDrive) => {
-    const sTime = new Date(start).getTime();
-    const eTime = new Date(end).getTime();
-
-    return !carBookings.some(b => {
-      // ข้ามรายการที่โดนปฏิเสธหรือยกเลิกแล้ว
-      if (b.status === 'rejected' || b.status === 'cancelled') return false;
-      
-      const bStart = new Date(b.startTime).getTime();
-      const bEnd = new Date(b.endTime).getTime();
-      const isOverlapping = (sTime < bEnd && eTime > bStart);
-      
-      // ถ้าเวลาไม่ทับซ้อนกัน ถือว่าผ่าน
-      if (!isOverlapping) return false;
-      
-      // เช็คว่าชนกับ "รถคันเดียวกัน (ยึดตาม ID รถ)" หรือไม่
-      if (b.carId === carId) return true;
-
-      // ถ้าเป็นกรณี "มีคนขับ" ให้เช็คด้วยว่าชนกับ "คนขับคนเดียวกัน" หรือไม่ 
-      // (ดึงข้อมูลล่าสุดจากตาราง cars มาเช็ค ณ ขณะนี้)
-      if (!selfDrive && !b.selfDrive) {
-          const targetCar = cars.find(c => c.id === carId);
-          const bookedCar = cars.find(c => c.id === b.carId);
-          
-          if (targetCar && bookedCar && targetCar.driver && targetCar.driver !== '-' && targetCar.driver !== 'ไม่มี') {
-              // ถ้าชื่อคนขับตรงกันและไม่ใช่การขับเอง ถือว่าไม่ว่าง
-              if (bookedCar.driver === targetCar.driver) {
-                  return true; 
-              }
-          }
-      }
-      return false;
-    });
-  };
-
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) { 
+        setErrorMsg('ขนาดไฟล์ใหญ่เกินไป (กรุณาแนบไฟล์ขนาดไม่เกิน 5MB)');
+        e.target.value = '';
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => setFormData({ ...formData, attachment: reader.result });
       reader.readAsDataURL(file);
     }
   };
 
-  const handleBook = (e) => {
+  const checkAvailability = (carId, start, end) => {
+    const sTime = new Date(start).getTime();
+    const eTime = new Date(end).getTime();
+    return !carBookings.some(b => {
+      if (b.carId !== carId || b.status === 'rejected' || b.status === 'cancelled') return false;
+      const bStart = new Date(b.startTime).getTime();
+      const bEnd = new Date(b.endTime).getTime();
+      return (sTime < bEnd && eTime > bStart); 
+    });
+  };
+
+  const handleBook = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     if (new Date(formData.startTime) >= new Date(formData.endTime)) {
       setErrorMsg('เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น'); return;
     }
-    if (!checkAvailability(selectedCar.id, formData.startTime, formData.endTime, formData.selfDrive)) {
-      setErrorMsg('รถโรงเรียนคันนี้ไม่ว่าง หรือคนขับติดภารกิจในช่วงเวลาดังกล่าว'); return;
+    if (!checkAvailability(selectedCar.id, formData.startTime, formData.endTime)) {
+      setErrorMsg('รถไม่ว่างในช่วงเวลาดังกล่าว (มีการจองซ้ำ)'); return;
     }
-
-    const newBooking = { id: 'cb' + Date.now(), carId: selectedCar.id, ...formData, status: 'pending', createdBy: user.id, createdAt: new Date().toISOString() };
+    setIsSubmitting(true);
+    const newBooking = { id: 'cb' + Date.now(), carId: selectedCar.id, ...formData, status: 'pending', createdBy: user.id };
     setCarBookings([newBooking, ...carBookings]);
-    syncToGoogleSheet('addCarBooking', newBooking);
+    await syncToGoogleSheet('addCarBooking', newBooking);
+    setIsSubmitting(false);
     setView('my_bookings');
-    
-    if (!formData.selfDrive && selectedCar.driver && selectedCar.driver !== '-' && selectedCar.driver !== 'ไม่มี') {
-        setSuccessMsg(`จองรถสำเร็จ! กรุณาติดต่อคนขับรถเพื่อยืนยัน: คุณ ${selectedCar.driver} โทร. ${selectedCar.driverPhone || 'ไม่ระบุ'}`);
-    } else {
-        setSuccessMsg('ส่งคำขอจองรถสำเร็จ');
-    }
-    setTimeout(() => setSuccessMsg(''), 10000);
-
-    setFormData({ requesterName: user.name || '', requesterPhone: '', title: '', destination: '', passengers: 1, startTime: '', endTime: '', attachment: null, selfDrive: false });
+    setFormData({ requesterName: user.name || '', requesterPhone: '', title: '', destination: '', passengers: 1, selfDrive: false, startTime: '', endTime: '', attachment: null });
   };
 
-  const viewDetails = (booking) => {
+  const openBookForm = (car) => {
+    setSelectedCar(car); setView('book'); setErrorMsg('');
+  };
+
+  const handleDayClick = (day) => {
+    setSelectedDateForBooking(day);
+    setShowResourceSelect(true);
+  };
+
+  const handleEventClick = (booking) => {
     setSelectedBooking(booking);
     setView('detail');
   };
 
-  const openBookForm = (car) => {
-    setSelectedCar(car); 
-    setView('book'); 
-    setErrorMsg('');
+  const handleSelectResourceForBooking = (car) => {
+    if (!selectedDateForBooking) return;
+    const dateString = selectedDateForBooking.toLocaleDateString('en-CA');
+    setFormData({
+      ...formData,
+      startTime: `${dateString}T08:30`,
+      endTime: `${dateString}T16:30`
+    });
+    setSelectedCar(car);
+    setShowResourceSelect(false);
+    setView('book');
   };
 
   return (
@@ -1215,44 +1495,60 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
         ) : (
           <div className="flex bg-slate-200/60 p-1.5 rounded-2xl shadow-inner w-max">
             <button onClick={() => setView('calendar')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'calendar' ? 'bg-white shadow-sm text-teal-600 scale-100' : 'text-slate-500 hover:text-slate-800'}`}>ปฏิทิน</button>
-            <button onClick={() => setView('list')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'list' || view === 'book' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-500 hover:text-slate-800'}`}>ดูรถที่ให้บริการ</button>
+            <button onClick={() => setView('list')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'list' || view === 'book' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-500 hover:text-slate-800'}`}>ดูรถโรงเรียน</button>
             <button onClick={() => setView('my_bookings')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'my_bookings' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-500 hover:text-slate-800'}`}>การจองทั้งหมด</button>
           </div>
         )}
       </div>
 
-      {view === 'calendar' && <ScheduleCalendar bookings={carBookings} items={cars} itemKey="carId" />}
+      {view === 'calendar' && <ScheduleCalendar bookings={carBookings} items={cars} itemKey="carId" onDayClick={handleDayClick} onEventClick={handleEventClick} />}
+
+      {showResourceSelect && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowResourceSelect(false)}>
+          <div className="bg-white rounded-[2rem] p-6 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+              <h3 className="text-xl font-black text-slate-800">เลือกรถโรงเรียนเพื่อจอง</h3>
+              <button onClick={() => setShowResourceSelect(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+            </div>
+            <p className="text-sm text-teal-600 bg-teal-50 px-3 py-2 rounded-xl font-bold mb-4 flex items-center gap-2">
+               <CalendarDays size={16}/> สำหรับวันที่: {selectedDateForBooking?.toLocaleDateString('th-TH', { dateStyle: 'long' })}
+            </p>
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2 hide-scrollbar">
+              {cars.map(car => (
+                <button key={car.id} onClick={() => handleSelectResourceForBooking(car)} className="w-full text-left p-4 rounded-2xl border border-slate-200 hover:border-teal-400 hover:shadow-md hover:bg-teal-50/30 transition-all group">
+                  <div className="font-bold text-slate-800 group-hover:text-teal-700 flex justify-between items-center">
+                     {car.plate} ({car.type})
+                     <ChevronRight size={16} className="text-slate-300 group-hover:text-teal-500" />
+                  </div>
+                  <div className="text-xs font-medium text-slate-500 mt-1">ความจุ {car.capacity} ที่นั่ง | คนขับ: {car.driver}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {view === 'list' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
           {cars.map(car => (
-            <div key={car.id} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white flex flex-col sm:flex-row items-center sm:items-start gap-8 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300">
-              <div className="w-32 h-32 bg-gradient-to-br from-teal-50 to-emerald-100 rounded-[2rem] flex items-center justify-center text-teal-600 shadow-inner flex-shrink-0 overflow-hidden relative">
-                {car.image && car.image !== 'Error uploading image' ? (
-                  <img 
-                    src={car.image.includes('drive.google.com') ? `https://drive.google.com/thumbnail?id=${car.image.match(/\/d\/(.+?)\//)?.[1] || car.image.match(/id=(.+?)$/)?.[1]}&sz=w800` : car.image} 
-                    alt={car.plate} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/600x400/f8fafc/64748b?text=Car+Image'; }}
-                  />
-                ) : (
-                  <Car size={56} />
-                )}
+            <div key={car.id} className="bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col group hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300">
+              <div className="relative overflow-hidden h-56 bg-slate-100">
+                <img 
+                  src={car.image && car.image.includes('drive.google.com') ? `https://drive.google.com/thumbnail?id=${car.image.match(/\/d\/(.+?)\//)?.[1] || car.image.match(/id=(.+?)$/)?.[1]}&sz=w800` : car.image} 
+                  alt={car.plate} 
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/600x400/f8fafc/64748b?text=Car+Image'; }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent"></div>
+                <h3 className="absolute bottom-5 left-6 right-6 text-2xl font-black text-white leading-tight drop-shadow-md">{car.plate} <span className="text-sm font-medium text-teal-200 bg-teal-900/50 px-2 py-1 rounded-lg ml-2">{car.type}</span></h3>
               </div>
-              <div className="flex-1 text-center sm:text-left w-full">
-                <div className="flex flex-col sm:flex-row justify-between items-center sm:items-start gap-2 mb-4">
-                  <h3 className="text-2xl font-black text-slate-800">{car.plate}</h3>
-                  <span className="text-xs font-bold px-3 py-1.5 bg-slate-100 rounded-xl text-slate-600 tracking-wider uppercase">{car.type}</span>
+              <div className="p-6 flex-1 flex flex-col">
+                <div className="space-y-4 text-sm font-medium text-slate-600 mb-8 flex-1 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-3 text-slate-700"><div className="p-2 bg-white rounded-xl shadow-sm text-teal-500"><Users size={18}/></div> ความจุ: <span className="font-bold text-lg">{car.capacity}</span> ที่นั่ง</div>
+                  <div className="flex items-start gap-3"><div className="p-2 bg-white rounded-xl shadow-sm text-teal-500 mt-1"><Car size={18}/></div> <span className="flex-1 text-slate-600 leading-relaxed pt-1">พนักงานขับรถ: {car.driver}</span></div>
                 </div>
-                <div className="text-sm font-medium text-slate-500 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2">
-                  <p className="flex justify-between"><span>พนักงานขับรถ:</span> <span className="font-bold text-slate-700">{car.driver} {car.driverPhone && `(${car.driverPhone})`}</span></p>
-                  <p className="flex justify-between"><span>ความจุ:</span> <span className="font-bold text-slate-700">{car.capacity} ที่นั่ง</span></p>
-                </div>
-                <button 
-                  onClick={() => openBookForm(car)}
-                  className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-2xl hover:bg-teal-600 shadow-md hover:shadow-teal-200 active:scale-95 transition-all duration-300"
-                >
-                  จองรถคันนี้
+                <button onClick={() => openBookForm(car)} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-teal-600 hover:shadow-lg hover:shadow-teal-200 active:scale-95 transition-all duration-300">
+                  ทำรายการจองรถคันนี้
                 </button>
               </div>
             </div>
@@ -1265,20 +1561,15 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
           <form onSubmit={handleBook} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white">
             <div className="flex items-center justify-between mb-8 border-b border-slate-100 pb-6">
               <div>
-                <h3 className="text-2xl font-black text-slate-800">จองรถทะเบียน {selectedCar.plate}</h3>
-                <p className="text-slate-500 font-medium mt-1">กรุณากรอกข้อมูลการเดินทางให้ครบถ้วน</p>
+                 <h3 className="text-2xl font-black text-slate-800">จอง {selectedCar.plate}</h3>
+                 <p className="text-slate-500 font-medium mt-1">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อดำเนินการ</p>
               </div>
-              <button onClick={() => setView('list')} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"><X size={20}/></button>
+              <button onClick={() => setView('list')} type="button" className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"><X size={20}/></button>
             </div>
             
             {errorMsg && <div className="mb-6 p-4 bg-rose-50 text-rose-600 text-sm font-bold rounded-2xl border border-rose-100 flex items-center gap-3 animate-bounce"><AlertCircle size={20}/> {errorMsg}</div>}
 
             <div className="space-y-6">
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-center gap-3 mb-6">
-                 <input type="checkbox" id="selfDrive" checked={formData.selfDrive} onChange={e => setFormData({...formData, selfDrive: e.target.checked})} className="w-5 h-5 accent-teal-500" />
-                 <label htmlFor="selfDrive" className="font-bold text-slate-700 cursor-pointer select-none">ไม่ใช้คนขับรถ (ขับเอง)</label>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="block text-sm font-bold text-slate-700 ml-1">ชื่อ-นามสกุล ผู้จอง</label>
@@ -1291,43 +1582,66 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
                     value={formData.requesterPhone} onChange={e => setFormData({...formData, requesterPhone: e.target.value})} placeholder="08X-XXX-XXXX" />
                 </div>
               </div>
+              
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-slate-700 ml-1">จุดประสงค์การเดินทาง</label>
+                <label className="block text-sm font-bold text-slate-700 ml-1">รายละเอียดงาน / โครงการ</label>
                 <input required type="text" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-medium"
-                  value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="เช่น ไปราชการ, แข่งขันทักษะ" />
+                  value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="เช่น นำนักเรียนไปแข่งขันวิชาการ" />
               </div>
+              
               <div className="space-y-2">
                 <label className="block text-sm font-bold text-slate-700 ml-1">สถานที่ปลายทาง</label>
                 <input required type="text" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-medium"
-                  value={formData.destination} onChange={e => setFormData({...formData, destination: e.target.value})} placeholder="ระบุสถานที่ให้ชัดเจน" />
+                  value={formData.destination} onChange={e => setFormData({...formData, destination: e.target.value})} placeholder="ระบุสถานที่ปลายทางที่ชัดเจน" />
               </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700 ml-1">เวลาไป</label>
+                  <label className="block text-sm font-bold text-slate-700 ml-1">เวลาที่เริ่มใช้รถ</label>
                   <input required type="datetime-local" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-medium"
                     value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700 ml-1">เวลากลับ</label>
+                  <label className="block text-sm font-bold text-slate-700 ml-1">เวลาที่จะกลับถึง</label>
                   <input required type="datetime-local" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-medium"
                     value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} />
                 </div>
               </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700 ml-1">จำนวนผู้โดยสาร (สูงสุด {selectedCar.capacity})</label>
-                  <input required type="number" min="1" max={selectedCar.capacity} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-medium"
-                    value={formData.passengers} onChange={e => setFormData({...formData, passengers: parseInt(e.target.value)})} />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700 ml-1">แนบเอกสารอ้างอิง (ถ้ามี)</label>
-                  <input type="file" onChange={handleFileUpload} className="w-full text-sm text-slate-500 file:mr-4 file:py-3.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer pt-1" />
-                  {formData.attachment && <p className="text-xs text-emerald-600 font-bold ml-2 mt-2">✓ แนบไฟล์สำเร็จแล้ว</p>}
-                </div>
+                 <div className="space-y-2">
+                    <label className="block text-sm font-bold text-slate-700 ml-1">จำนวนผู้โดยสาร (รวมผู้จอง)</label>
+                    <input required type="number" min="1" max={selectedCar.capacity} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-medium"
+                      value={formData.passengers} onChange={e => setFormData({...formData, passengers: e.target.value})} placeholder={`สูงสุด ${selectedCar.capacity} ท่าน`} />
+                 </div>
+                 <div className="flex items-center mt-8">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" className="w-5 h-5 accent-teal-600 rounded border-slate-300" 
+                        checked={formData.selfDrive} onChange={e => setFormData({...formData, selfDrive: e.target.checked})} />
+                      <span className="font-bold text-slate-700">ผู้จองขับรถเอง (ไม่ต้องมีพนักงานขับรถ)</span>
+                    </label>
+                 </div>
               </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-slate-700 ml-1">แนบเอกสารโครงการอ้างอิง (ถ้ามี)</label>
+                <div className="relative border-2 border-dashed border-slate-300 rounded-3xl p-6 text-center hover:bg-slate-50 transition-colors">
+                   <input type="file" accept="image/*,.pdf" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                   <FileText size={32} className="mx-auto mb-3 text-teal-400" />
+                   <p className="text-sm font-medium text-slate-600">คลิก หรือ ลากไฟล์เอกสารมาวางที่นี่ (ขนาดไม่เกิน 5MB)</p>
+                </div>
+                {formData.attachment && (
+                  <div className="mt-4 p-2 bg-slate-50 rounded-2xl inline-block border border-slate-200">
+                     <span className="text-sm font-medium text-teal-600 flex items-center gap-2"><CheckCircle size={16}/> เลือกไฟล์เรียบร้อยแล้ว</span>
+                  </div>
+                )}
+              </div>
+
               <div className="pt-6 flex gap-4">
-                <button type="submit" className="flex-1 bg-gradient-to-r from-teal-500 to-emerald-500 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-teal-200 hover:shadow-2xl hover:shadow-teal-300 active:scale-[0.98] transition-all">ส่งคำขอจองรถ</button>
-                <button type="button" onClick={() => setView('list')} className="px-8 py-4 bg-slate-100 text-slate-700 rounded-2xl font-bold text-lg hover:bg-slate-200 active:scale-[0.98] transition-all">ยกเลิก</button>
+                <button type="submit" disabled={isSubmitting} className={`flex-1 bg-gradient-to-r from-teal-500 to-emerald-500 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-teal-200 hover:shadow-2xl active:scale-[0.98] transition-all ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}>
+                  {isSubmitting ? 'กำลังส่งข้อมูล...' : 'ยืนยันการจอง'}
+                </button>
+                <button type="button" onClick={() => setView('list')} disabled={isSubmitting} className="px-8 py-4 bg-slate-100 text-slate-700 rounded-2xl font-bold text-lg hover:bg-slate-200 active:scale-[0.98] transition-all">ยกเลิก</button>
               </div>
             </div>
           </form>
@@ -1335,16 +1649,15 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
       )}
 
       {view === 'detail' && selectedBooking && (() => {
-        const car = cars.find(c => c.id === selectedBooking.carId);
+        const car = cars.find(r => r.id === selectedBooking.carId);
         return (
           <div className="max-w-4xl mx-auto animate-in zoom-in-95 duration-300">
             <div className="bg-white/90 backdrop-blur-xl p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white">
               <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-8 border-b border-slate-100 pb-8">
                 <div>
-                  <h3 className="text-3xl font-black text-slate-800 leading-tight">{selectedBooking.title}</h3>
-                  <p className="text-slate-500 font-medium mt-3 flex items-center gap-2">
-                    <MapPin size={18} className="text-rose-400" /> ปลายทาง: <span className="font-bold text-slate-700">{selectedBooking.destination}</span>
-                  </p>
+                  <span className="px-3 py-1 bg-teal-50 text-teal-600 text-xs font-bold rounded-lg tracking-wider">รถโรงเรียน: {car?.plate || 'ไม่ระบุ'}</span>
+                  <h3 className="text-3xl font-black text-slate-800 leading-tight mt-3">{selectedBooking.title}</h3>
+                  <p className="text-slate-500 font-medium mt-1">ผู้ทำรายการจอง: {selectedBooking.requesterName}</p>
                 </div>
                 <div className="scale-110 origin-left md:origin-right"><StatusBadge status={selectedBooking.status} type="booking" /></div>
               </div>
@@ -1352,66 +1665,54 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-8">
                 <div className="space-y-6">
                   <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">ข้อมูลผู้จอง</h4>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">ข้อมูลผู้ติดต่อและผู้โดยสาร</h4>
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-slate-400 font-bold border border-slate-200 shadow-sm">
                         <Users size={20} />
                       </div>
                       <div>
                         <p className="font-bold text-slate-800 text-lg">{selectedBooking.requesterName}</p>
-                        <p className="text-slate-500 font-medium text-sm">โทร. {selectedBooking.requesterPhone}</p>
+                        <p className="text-slate-500 font-medium text-sm">โทร. {selectedBooking.requesterPhone || 'ไม่ระบุ'}</p>
+                        <p className="text-slate-500 font-bold text-sm mt-1 bg-white inline-block px-2 py-0.5 rounded border border-slate-100">ผู้โดยสาร {selectedBooking.passengers} ท่าน</p>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">เวลาการเดินทาง</h4>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">วันเวลาการใช้งาน</h4>
                     <div className="bg-slate-50 p-5 rounded-3xl text-slate-700 font-medium border border-slate-100 flex flex-col gap-2">
-                      <div className="flex justify-between"><span className="text-slate-500">เวลาไป:</span> <span className="font-bold">{new Date(selectedBooking.startTime).toLocaleString('th-TH')}</span></div>
-                      <div className="flex justify-between"><span className="text-slate-500">เวลากลับ:</span> <span className="font-bold">{new Date(selectedBooking.endTime).toLocaleString('th-TH')}</span></div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">ข้อมูลรถ</h4>
-                    <div className="flex items-center justify-between bg-teal-50/50 p-5 rounded-3xl text-teal-800 font-medium border border-teal-100/50">
-                       <div className="flex flex-col gap-1">
-                          <span className="font-black text-lg text-teal-700">{car?.plate}</span>
-                          <span className="text-sm">คนขับ: {selectedBooking.selfDrive ? 'ขับเอง' : car?.driver}</span>
-                       </div>
-                       <div className="text-right">
-                          <span className="text-xs bg-white px-2 py-1 rounded-lg border border-teal-100 shadow-sm">{car?.type}</span>
-                          <div className="text-sm mt-2 font-bold">ผู้โดยสาร: {selectedBooking.passengers} / {car?.capacity}</div>
-                       </div>
+                      <div className="flex justify-between"><span className="text-slate-500">เวลาเริ่มใช้รถ:</span> <span className="font-bold text-slate-800">{new Date(selectedBooking.startTime).toLocaleString('th-TH')}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">เวลากลับถึง:</span> <span className="font-bold text-slate-800">{new Date(selectedBooking.endTime).toLocaleString('th-TH')}</span></div>
                     </div>
                   </div>
                 </div>
                 
-                <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">เอกสารอ้างอิง</h4>
-                  {selectedBooking.attachment && selectedBooking.attachment !== 'Error uploading file' ? (
-                    <button 
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (selectedBooking.attachment.startsWith('data:')) {
-                           alert('ไฟล์กำลังประมวลผลขึ้นระบบ กรุณารีเฟรชหน้าเว็บอีกครั้งเพื่อดูไฟล์แนบ');
-                        } else {
-                           window.open(selectedBooking.attachment, '_blank');
-                        }
-                      }}
-                      className="w-full flex flex-col items-center justify-center p-8 rounded-3xl border border-slate-200 shadow-sm bg-slate-50 hover:bg-white hover:shadow-md transition-all cursor-pointer group"
-                      title="คลิกเพื่อเปิดเอกสาร"
-                    >
-                      <FileText size={56} className="text-indigo-400 mb-4 group-hover:scale-110 transition-transform duration-300" />
-                      <span className="font-bold text-slate-700">คลิกเพื่อดูเอกสารแนบ</span>
-                    </button>
-                  ) : (
-                    <div className="w-full h-64 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400">
-                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
-                        <FileText size={28} className="text-slate-300" />
-                      </div>
-                      <p className="font-semibold">ไม่มีเอกสารอ้างอิงแนบมา</p>
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">สถานที่ปลายทาง</h4>
+                    <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 flex items-center gap-3">
+                       <MapPin size={24} className="text-rose-400" />
+                       <span className="font-bold text-slate-700 text-lg">{selectedBooking.destination}</span>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">ข้อมูลคนขับ</h4>
+                    <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                       {selectedBooking.selfDrive ? (
+                          <div className="font-bold text-amber-600 flex items-center gap-2"><CheckCircle size={18}/> ผู้จองขับรถเอง</div>
+                       ) : (
+                          <div className="font-bold text-slate-700">พนักงานขับรถ: {car?.driver || 'ไม่ระบุ'}</div>
+                       )}
+                    </div>
+                  </div>
+                  
+                  {selectedBooking.attachment && selectedBooking.attachment !== 'Error uploading file' && (
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">เอกสารแนบ</h4>
+                      <button onClick={() => window.open(selectedBooking.attachment, '_blank')} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-teal-50 text-teal-600 rounded-2xl font-bold hover:bg-teal-100 transition-colors border border-teal-100">
+                        <FileText size={18} /> ดูเอกสารอ้างอิงแนบ
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1422,123 +1723,113 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
       })()}
 
       {view === 'my_bookings' && (() => {
-        const filteredBookings = [...carBookings].filter(b => {
-          const matchDate = !filterDate || new Date(b.startTime).toLocaleDateString('en-CA') === filterDate;
-          const matchStatus = filterStatus === 'all' || b.status === filterStatus;
-          const matchCar = filterCar === 'all' || b.carId === filterCar;
-          return matchDate && matchStatus && matchCar;
-        }).sort((a, b) => {
-          const timeA = new Date(a.startTime).getTime();
-          const timeB = new Date(b.startTime).getTime();
-          return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
-        });
+        const filteredBookings = [...carBookings]
+          .filter(b => {
+            const matchDate = !filterDate || new Date(b.startTime).toLocaleDateString('en-CA') === filterDate;
+            const matchStatus = filterStatus === 'all' || b.status === filterStatus;
+            const matchCar = filterCar === 'all' || b.carId === filterCar;
+            return matchDate && matchStatus && matchCar;
+          })
+          .sort((a, b) => {
+            const timeA = new Date(a.startTime).getTime();
+            const timeB = new Date(b.startTime).getTime();
+            return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+          });
 
         const totalItems = filteredBookings.length;
         const paginatedBookings = filteredBookings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
         return (
-        <>
-          {successMsg && (
-            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 text-emerald-700 font-medium rounded-2xl flex items-center gap-3 animate-in slide-in-from-top-4 shadow-sm whitespace-pre-line">
-              <CheckCircle size={24}/> {successMsg}
+        <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col animate-in fade-in duration-300">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+               <Filter size={20} className="text-slate-400" />
+               <span className="font-bold text-slate-700">ตัวกรองข้อมูลรถโรงเรียน:</span>
             </div>
-          )}
-          <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                 <Filter size={20} className="text-slate-400" />
-                 <span className="font-bold text-slate-700">ตัวกรองข้อมูล:</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                 <select 
-                   value={filterCar} 
-                   onChange={e => { setFilterCar(e.target.value); setCurrentPage(1); }} 
-                   className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 font-bold text-sm text-slate-700"
-                 >
-                    <option value="all">รถทุกคัน</option>
-                    {cars.map(c => <option key={c.id} value={c.id}>{c.plate}</option>)}
-                 </select>
-                 <select 
-                   value={filterStatus} 
-                   onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }} 
-                   className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 font-bold text-sm text-slate-700"
-                 >
-                    <option value="all">ทุกสถานะ</option>
-                    <option value="pending">รออนุมัติ</option>
-                    <option value="approved">อนุมัติแล้ว</option>
-                    <option value="rejected">ไม่อนุมัติ</option>
-                    <option value="cancelled">ยกเลิก</option>
-                 </select>
-                 <input 
-                   type="date" 
-                   value={filterDate} 
-                   onChange={e => { setFilterDate(e.target.value); setCurrentPage(1); }} 
-                   className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 font-medium text-sm text-slate-700"
-                 />
-                 <button 
-                   onClick={() => { setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
-                   className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
-                 >
-                   <ArrowUpDown size={16} /> 
-                   {sortOrder === 'desc' ? 'ใหม่ไปเก่า' : 'เก่าไปใหม่'}
-                 </button>
-              </div>
-              {(filterDate || filterCar !== 'all' || filterStatus !== 'all' || sortOrder !== 'desc') && (
-                 <div className="flex justify-end">
-                   <button onClick={() => { setFilterDate(''); setFilterCar('all'); setFilterStatus('all'); setSortOrder('desc'); setCurrentPage(1); }} className="text-sm font-bold text-rose-500 hover:text-rose-700 px-3 whitespace-nowrap">ล้างค่าตัวกรอง</button>
-                 </div>
-              )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+               <select 
+                 value={filterCar} 
+                 onChange={e => { setFilterCar(e.target.value); setCurrentPage(1); }} 
+                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 font-bold text-sm text-slate-700"
+               >
+                 <option value="all">รถทุกคัน</option>
+                 {cars.map(c => <option key={c.id} value={c.id}>{c.plate} ({c.type})</option>)}
+               </select>
+               <select 
+                 value={filterStatus} 
+                 onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }} 
+                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 font-bold text-sm text-slate-700"
+               >
+                 <option value="all">ทุกสถานะ</option>
+                 <option value="pending">รออนุมัติ</option>
+                 <option value="approved">อนุมัติแล้ว</option>
+                 <option value="rejected">ไม่อนุมัติ</option>
+                 <option value="cancelled">ยกเลิก</option>
+               </select>
+               <input 
+                 type="date" 
+                 value={filterDate} 
+                 onChange={e => { setFilterDate(e.target.value); setCurrentPage(1); }} 
+                 className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 font-medium text-sm text-slate-700"
+               />
+               <button 
+                 onClick={() => { setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
+                 className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
+               >
+                 <ArrowUpDown size={16} /> 
+                 {sortOrder === 'desc' ? 'ใหม่ไปเก่า' : 'เก่าไปใหม่'}
+               </button>
             </div>
-
-            <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <table className="w-full text-left border-collapse min-w-[800px]">
-                 <thead>
-                    <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
-                      <th className="p-6 font-bold uppercase tracking-wider w-16 text-center">ลำดับ</th>
-                      <th className="p-6 font-bold uppercase tracking-wider">เรื่อง / ปลายทาง</th>
-                      <th className="p-6 font-bold uppercase tracking-wider">รถ</th>
-                      <th className="p-6 font-bold uppercase tracking-wider">เวลาเดินทาง</th>
-                      <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
-                      <th className="p-6 font-bold uppercase tracking-wider text-center">จัดการ</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100/80">
-                    {paginatedBookings.map((b, index) => {
-                      const car = cars.find(c => c.id === b.carId);
-                      return (
-                      <tr key={b.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => viewDetails(b)}>
-                        <td className="p-6 text-center font-bold text-slate-400">
-                          {((currentPage - 1) * itemsPerPage) + index + 1}
-                        </td>
-                        {/* --- เพิ่มคอลัมน์ เรื่อง / รถ ที่หายไป --- */}
-                        <td className="p-6">
-                           <div className="font-bold text-slate-800 text-base">{b.title}</div>
-                           <div className="text-sm font-medium text-slate-500 mt-1 flex items-center gap-1"><MapPin size={14} className="text-rose-400"/> {b.destination}</div>
-                        </td>
-                        <td className="p-6">
-                           <div className="font-bold text-teal-700 text-base">{car?.plate || 'ไม่ระบุรถ'}</div>
-                           <div className="text-xs font-medium text-slate-400 mt-1">{car?.type || ''}</div>
-                        </td>
-                        {/* --------------------------------- */}
-                        <td className="p-6">
-                          <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
-                          <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
-                        </td>
-                        <td className="p-6"><StatusBadge status={b.status} type="booking" /></td>
-                        <td className="p-6 text-center">
-                          <button onClick={(e) => { e.stopPropagation(); viewDetails(b); }} className="px-4 py-2 text-sm font-bold text-teal-600 bg-teal-50 hover:bg-teal-600 hover:text-white rounded-xl transition-all">ดูรายละเอียด</button>
-                        </td>
-                      </tr>
-                    )})}
-                    {paginatedBookings.length === 0 && (
-                      <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลตามเงื่อนไขที่กรอง</td></tr>
-                    )}
-                  </tbody>
-              </table>
-            </div>
-            <Pagination totalItems={totalItems} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
+            {(filterDate || filterCar !== 'all' || filterStatus !== 'all' || sortOrder !== 'desc') && (
+               <div className="flex justify-end">
+                 <button onClick={() => { setFilterDate(''); setFilterCar('all'); setFilterStatus('all'); setSortOrder('desc'); setCurrentPage(1); }} className="text-sm font-bold text-rose-500 hover:text-rose-700 px-3 whitespace-nowrap">ล้างค่าตัวกรอง</button>
+               </div>
+            )}
           </div>
-        </>
+
+          <div className="overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full text-left border-collapse min-w-[800px]">
+               <thead>
+                  <tr className="bg-slate-50/80 text-slate-500 text-sm border-b border-slate-100">
+                    <th className="p-6 font-bold uppercase tracking-wider w-16 text-center">ลำดับ</th>
+                    <th className="p-6 font-bold uppercase tracking-wider">เรื่อง / ปลายทาง</th>
+                    <th className="p-6 font-bold uppercase tracking-wider">เวลาจองใช้งาน</th>
+                    <th className="p-6 font-bold uppercase tracking-wider">สถานะ</th>
+                    <th className="p-6 font-bold uppercase tracking-wider text-center">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100/80">
+                  {paginatedBookings.map((b, index) => {
+                    const car = cars.find(c => c.id === b.carId);
+                    return (
+                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => handleEventClick(b)}>
+                      <td className="p-6 text-center font-bold text-slate-400">
+                        {((currentPage - 1) * itemsPerPage) + index + 1}
+                      </td>
+                      <td className="p-6">
+                        <div className="font-bold text-slate-800 text-base">{b.title}</div>
+                        <div className="text-sm font-medium text-teal-600 mt-1">{car?.plate || 'ไม่ระบุรถ'} <span className="text-slate-400">({b.destination})</span></div>
+                      </td>
+                      <td className="p-6">
+                        <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
+                        <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
+                      </td>
+                      <td className="p-6"><StatusBadge status={b.status} type="booking" /></td>
+                      <td className="p-6 text-center">
+                        <button onClick={(e) => { e.stopPropagation(); handleEventClick(b); }} className="px-4 py-2 text-sm font-bold text-teal-600 bg-teal-50 hover:bg-teal-600 hover:text-white rounded-xl transition-all shadow-sm">
+                           ดูรายละเอียด
+                        </button>
+                      </td>
+                    </tr>
+                  )})}
+                  {paginatedBookings.length === 0 && (
+                    <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลตามเงื่อนไขที่กรอง</td></tr>
+                  )}
+                </tbody>
+            </table>
+          </div>
+          <Pagination totalItems={totalItems} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
+        </div>
       );})()}
     </div>
   );
@@ -1546,14 +1837,12 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
 
 const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }) => {
   const [view, setView] = useState('menu'); 
-  const [cart, setCart] = useState({});
-  const [formData, setFormData] = useState({ 
-    requesterName: user.name || '', requesterPhone: '', location: '', note: '', 
-    deliveryTime: '', timeSlot: ['อาหารกลางวัน'], cateringType: 'สั่งปกติ (A-la-carte)', pax: 1 
-  });
   const [activeCategory, setActiveCategory] = useState('all');
-  
-  // Filtering States
+  const [cart, setCart] = useState({});
+  const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', location: '', note: '', deliveryTime: '', timeSlot: [], cateringType: 'สั่งปกติ (A-la-carte)', pax: 1 });
+  const [successMsg, setSuccessMsg] = useState('');
+
+  // States สำหรับกรองออเดอร์
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterDate, setFilterDate] = useState('');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -1562,58 +1851,60 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
 
   useEffect(() => { setCurrentPage(1); }, [filterStatus, filterDate, sortOrder]);
 
-  const totalCartItems = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
-
-  const updateCart = (foodId, delta, noteStr) => {
+  const updateCart = (foodId, change, note = null) => {
     setCart(prev => {
-      const updated = { ...prev };
-      const currentItem = updated[foodId] || { qty: 0, note: '' };
-      let newQty = currentItem.qty + delta;
+      const newCart = { ...prev };
+      if (!newCart[foodId]) newCart[foodId] = { qty: 0, note: '' };
       
-      const food = foods.find(f => f.id === foodId);
-      if (food && newQty > food.maxQuantity) newQty = food.maxQuantity;
-      
-      if (newQty <= 0) {
-        delete updated[foodId];
+      if (note !== null) {
+        newCart[foodId].note = note;
       } else {
-        updated[foodId] = {
-          qty: newQty,
-          note: noteStr !== undefined ? noteStr : currentItem.note
-        };
+        newCart[foodId].qty += change;
       }
-      return updated;
+
+      if (newCart[foodId].qty <= 0) delete newCart[foodId];
+      return newCart;
     });
   };
 
-  const getBasePrice = () => Object.keys(cart).reduce((sum, id) => sum + (foods.find(f => f.id === id).price * cart[id].qty), 0);
+  const getBasePrice = () => {
+    return Object.keys(cart).reduce((sum, foodId) => {
+      const food = foods.find(f => f.id === foodId);
+      return sum + (food ? food.price * cart[foodId].qty : 0);
+    }, 0);
+  };
+
   const getMultiplier = () => formData.cateringType === 'สั่งปกติ (A-la-carte)' ? 1 : formData.pax;
+
+  const totalCartItems = Object.keys(cart).reduce((sum, key) => sum + cart[key].qty, 0);
 
   const handleOrder = (e) => {
     e.preventDefault();
-    if(totalCartItems === 0) return;
+    if (totalCartItems === 0) return;
 
-    const orderItems = Object.keys(cart).map(foodId => {
+    const items = Object.keys(cart).map(foodId => {
       const food = foods.find(f => f.id === foodId);
       return { id: foodId, name: food.name, price: food.price, qty: cart[foodId].qty, note: cart[foodId].note };
     });
-    const totalPrice = getBasePrice() * getMultiplier();
 
     const newOrder = {
       id: 'fo' + Date.now(),
-      itemsString: JSON.stringify(orderItems),
-      totalPrice,
+      itemsString: JSON.stringify(items),
+      totalPrice: getBasePrice() * getMultiplier(),
       ...formData,
-      timeSlot: Array.isArray(formData.timeSlot) ? formData.timeSlot.join(', ') : formData.timeSlot,
+      timeSlot: formData.timeSlot.join(', '),
       status: 'pending',
       createdBy: user.id,
       createdAt: new Date().toISOString()
     };
-    
+
     setFoodOrders([newOrder, ...foodOrders]);
     syncToGoogleSheet('addFoodOrder', newOrder);
     setCart({});
     setView('my_orders');
-    setFormData({ requesterName: user.name || '', requesterPhone: '', location: '', note: '', deliveryTime: '', timeSlot: ['อาหารกลางวัน'], cateringType: 'สั่งปกติ (A-la-carte)', pax: 1 });
+    setSuccessMsg('ส่งออเดอร์เรียบร้อยแล้ว');
+    setTimeout(() => setSuccessMsg(''), 5000);
+    setFormData({ requesterName: user.name || '', requesterPhone: '', location: '', note: '', deliveryTime: '', timeSlot: [], cateringType: 'สั่งปกติ (A-la-carte)', pax: 1 });
   };
 
   return (
@@ -1897,7 +2188,6 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
                       <td className="p-6 text-center font-bold text-slate-400">
                         {((currentPage - 1) * itemsPerPage) + index + 1}
                       </td>
-                      {/* --- ปรับแต่งคอลัมน์ รายการอาหาร และ วันเวลา/สถานที่ ให้แสดงผลครบ 5 คอลัมน์ --- */}
                       <td className="p-6">
                          <div className="font-bold text-slate-800 text-sm">
                             {parsedItems.map((item, idx) => (
@@ -1911,7 +2201,6 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
                         <div className="font-medium text-slate-500 text-xs mb-1"><MapPin size={14} className="inline text-rose-400 mr-1"/> {b.location}</div>
                         <div className="text-xs text-slate-400">โดย: {b.requesterName}</div>
                       </td>
-                      {/* ---------------------------------------------------------------------- */}
                       <td className="p-6 text-center">
                         <div className="text-xl font-black text-amber-600">{b.totalPrice} ฿</div>
                         {b.cateringType !== 'สั่งปกติ (A-la-carte)' && <div className="text-xs text-slate-500 font-medium mt-1">สำหรับ {b.pax} ท่าน</div>}
@@ -1920,7 +2209,7 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
                     </tr>
                   )})}
                   {paginatedOrders.length === 0 && (
-                    <tr><td colSpan="4" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลตามเงื่อนไขที่กรอง</td></tr>
+                    <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-bold text-lg">ไม่พบข้อมูลตามเงื่อนไขที่กรอง</td></tr>
                   )}
                 </tbody>
             </table>
@@ -1998,33 +2287,31 @@ const Approvals = ({ user, roomBookings, setRoomBookings, carBookings, setCarBoo
       </div>
 
       <div className="bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col">
-        {/* ส่วนค้นหาและกรองข้อมูลสำหรับ Approvals */}
         <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-4">
             <div className="flex items-center gap-3">
                <Filter size={20} className="text-slate-400" />
-               <span className="font-bold text-slate-700">ตัวกรองรายการ:</span>
+               <span className="font-bold text-slate-700">ตัวกรองข้อมูล:</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                <select 
                  value={filterStatus} 
-                 onChange={e => setFilterStatus(e.target.value)} 
+                 onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }} 
                  className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-slate-700"
                >
-                 <option value="all">รายการทั้งหมด (ทุกสถานะ)</option>
-                 <option value="pending">รอการอนุมัติ (Pending)</option>
-                 <option value="approved">อนุมัติแล้ว (Approved)</option>
-                 <option value="rejected">ไม่อนุมัติ (Rejected)</option>
-                 <option value="cancelled">ยกเลิก (Cancelled)</option>
+                 <option value="all">ทุกสถานะ</option>
+                 <option value="pending">รออนุมัติ / รอรับออเดอร์</option>
+                 <option value="approved">อนุมัติแล้ว / จัดส่งแล้ว</option>
+                 <option value="rejected">ไม่อนุมัติ / ยกเลิก</option>
+                 <option value="cancelled">ยกเลิก</option>
                </select>
                <input 
                  type="date" 
                  value={filterDate} 
-                 onChange={e => setFilterDate(e.target.value)} 
+                 onChange={e => { setFilterDate(e.target.value); setCurrentPage(1); }} 
                  className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-sm text-slate-700"
-                 title="กรองตามวันที่ทำรายการ/จองใช้งาน"
                />
                <button 
-                 onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                 onClick={() => { setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
                  className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
                >
                  <ArrowUpDown size={16} /> 
@@ -2033,7 +2320,7 @@ const Approvals = ({ user, roomBookings, setRoomBookings, carBookings, setCarBoo
             </div>
             {(filterDate || filterStatus !== 'pending' || sortOrder !== 'desc') && (
                <div className="flex justify-end">
-                 <button onClick={() => { setFilterDate(''); setFilterStatus('pending'); setSortOrder('desc'); }} className="text-sm font-bold text-rose-500 hover:text-rose-700 px-3 whitespace-nowrap">ล้างค่าตัวกรองให้กลับเป็นค่าเริ่มต้น</button>
+                 <button onClick={() => { setFilterDate(''); setFilterStatus('pending'); setSortOrder('desc'); setCurrentPage(1); }} className="text-sm font-bold text-rose-500 hover:text-rose-700 px-3 whitespace-nowrap">ล้างค่าตัวกรองให้กลับเป็นค่าเริ่มต้น</button>
                </div>
             )}
         </div>
@@ -2966,152 +3253,4 @@ const SettingsView = ({ categories, setCategories, rooms, setRooms, cars, setCar
       </div>
     </div>
   );
-};
-
-// --- Shared Components ---
-
-const StatCard = ({ title, value, icon, color }) => (
-  <div className={`p-6 rounded-[2rem] bg-gradient-to-br ${color} shadow-lg relative overflow-hidden group`}>
-    <div className="absolute -right-6 -top-6 text-white/10 group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
-      {React.cloneElement(icon, { size: 120 })}
-    </div>
-    <div className="relative z-10">
-      <div className="flex items-center gap-3 text-white/90 mb-4 font-bold text-sm">
-        {React.cloneElement(icon, { size: 20 })}
-        {title}
-      </div>
-      <div className="text-5xl font-black text-white">{value}</div>
-    </div>
-  </div>
-);
-
-const ProgressBar = ({ label, count, total, color }) => {
-  const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-  return (
-    <div>
-      <div className="flex justify-between text-sm font-bold text-slate-700 mb-2">
-        <span>{label}</span>
-        <span>{count} รายการ ({percentage}%)</span>
-      </div>
-      <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full transition-all duration-1000 ease-out`} style={{ width: `${percentage}%` }}></div>
-      </div>
-    </div>
-  );
-};
-
-const ScheduleCalendar = ({ bookings, items, itemKey }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-
-  const getDaysInMonth = (date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayIndex = new Date(year, month, 1).getDay();
-    
-    const days = [];
-    for (let i = 0; i < firstDayIndex; i++) days.push(null);
-    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
-    return days;
-  };
-
-  const days = getDaysInMonth(currentDate);
-  const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-
-  return (
-    <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-8 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white animate-in fade-in duration-500">
-      <div className="flex items-center justify-between mb-8">
-        <h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-          {monthNames[currentDate.getMonth()]} {currentDate.getFullYear() + 543}
-        </h3>
-        <div className="flex gap-2">
-          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-3 bg-slate-50 text-slate-600 rounded-2xl hover:bg-slate-100 hover:text-slate-800 transition-colors shadow-sm"><ChevronLeft size={20}/></button>
-          <button onClick={() => setCurrentDate(new Date())} className="px-5 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-colors shadow-sm text-sm">เดือนนี้</button>
-          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-3 bg-slate-50 text-slate-600 rounded-2xl hover:bg-slate-100 hover:text-slate-800 transition-colors shadow-sm"><ChevronRight size={20}/></button>
-        </div>
-      </div>
-
-      <div className="w-full overflow-x-auto pb-4 hide-scrollbar">
-         <div className="min-w-[800px] grid grid-cols-7 gap-3 sm:gap-4 mb-4">
-            {['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'].map(day => (
-               <div key={day} className="text-center font-bold text-slate-400 text-sm py-2 bg-slate-50 rounded-xl">{day}</div>
-            ))}
-         </div>
-         <div className="min-w-[800px] grid grid-cols-7 gap-3 sm:gap-4">
-            {days.map((day, i) => {
-               if (!day) return <div key={i} className="min-h-[120px] bg-transparent border-2 border-dashed border-slate-100 rounded-[1.5rem]"></div>;
-               
-               const isToday = new Date().toDateString() === day.toDateString();
-               const dayBookings = bookings.filter(b => {
-                  const bDate = new Date(b.startTime);
-                  return bDate.getDate() === day.getDate() && 
-                         bDate.getMonth() === day.getMonth() && 
-                         bDate.getFullYear() === day.getFullYear() && 
-                         b.status !== 'rejected' && 
-                         b.status !== 'cancelled';
-               });
-
-               return (
-                  <div key={i} className={`min-h-[120px] p-2.5 sm:p-3 border-2 rounded-[1.5rem] transition-colors ${isToday ? 'border-indigo-400 bg-indigo-50/30 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-300'}`}>
-                     <div className={`text-right text-sm font-black mb-2 ${isToday ? 'text-indigo-600' : 'text-slate-600'}`}>
-                       {day.getDate()}
-                     </div>
-                     <div className="space-y-2 mt-1">
-                        {dayBookings.map(b => {
-                           const item = items.find(itm => itm.id === b[itemKey]);
-                           const isApproved = b.status === 'approved';
-                           return (
-                              <div key={b.id} 
-                                className={`text-[10px] sm:text-xs p-2 rounded-xl border-l-4 truncate cursor-default transition-all shadow-sm
-                                  ${isApproved ? 'bg-emerald-50/80 text-emerald-700 border-emerald-500 border-t-transparent border-r-transparent border-b-transparent hover:bg-emerald-100' 
-                                               : 'bg-amber-50/80 text-amber-700 border-amber-500 border-t-transparent border-r-transparent border-b-transparent hover:bg-amber-100'}`} 
-                                title={`[${isApproved ? 'อนุมัติแล้ว' : 'รออนุมัติ'}] ${b.title} - ${item?.name || item?.plate}`}
-                              >
-                                 <div className="font-bold">{new Date(b.startTime).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
-                                 <div className="truncate font-medium opacity-90 mt-0.5">{item?.name || item?.plate}</div>
-                              </div>
-                           )
-                        })}
-                     </div>
-                  </div>
-               );
-            })}
-         </div>
-      </div>
-    </div>
-  );
-};
-
-const StatusBadge = ({ status, type }) => {
-  let style = "px-3 py-1.5 text-xs font-bold rounded-xl flex items-center gap-1.5 w-max tracking-wide";
-  let text = "";
-  let icon = null;
-
-  if (type === 'ticket') {
-    switch(status) {
-      case 'pending': style += " bg-rose-50 text-rose-600 border border-rose-100"; text = "รอรับงาน"; icon = <Clock size={14}/>; break;
-      case 'in_progress': style += " bg-amber-50 text-amber-600 border border-amber-100"; text = "กำลังดำเนินการ"; icon = <Wrench size={14}/>; break;
-      case 'completed': style += " bg-emerald-50 text-emerald-600 border border-emerald-100"; text = "เสร็จสิ้น"; icon = <CheckCircle size={14}/>; break;
-      case 'cancelled': style += " bg-slate-100 text-slate-500 border border-slate-200"; text = "ยกเลิก"; icon = <XCircle size={14}/>; break;
-      default: text = status;
-    }
-  } else if (type === 'booking') {
-    switch(status) {
-      case 'pending': style += " bg-amber-50 text-amber-600 border border-amber-100"; text = "รออนุมัติ"; icon = <Clock size={14}/>; break;
-      case 'approved': style += " bg-emerald-50 text-emerald-600 border border-emerald-100"; text = "อนุมัติแล้ว"; icon = <CheckCircle size={14}/>; break;
-      case 'rejected': style += " bg-rose-50 text-rose-600 border border-rose-100"; text = "ไม่อนุมัติ"; icon = <XCircle size={14}/>; break;
-      case 'cancelled': style += " bg-slate-100 text-slate-500 border border-slate-200"; text = "ยกเลิก"; icon = <XCircle size={14}/>; break;
-      default: text = status;
-    }
-  } else if (type === 'order') {
-    switch(status) {
-      case 'pending': style += " bg-amber-50 text-amber-600 border border-amber-100"; text = "รอรับออเดอร์"; icon = <Clock size={14}/>; break;
-      case 'approved': style += " bg-emerald-50 text-emerald-600 border border-emerald-100"; text = "จัดส่งเรียบร้อย"; icon = <CheckCircle size={14}/>; break;
-      case 'rejected': style += " bg-rose-50 text-rose-600 border border-rose-100"; text = "ยกเลิกออเดอร์"; icon = <XCircle size={14}/>; break;
-      case 'cancelled': style += " bg-slate-100 text-slate-500 border border-slate-200"; text = "ยกเลิกโดย Admin"; icon = <XCircle size={14}/>; break;
-      default: text = status;
-    }
-  }
-
-  return <span className={style}>{icon} {text}</span>;
 };
