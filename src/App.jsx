@@ -1075,6 +1075,12 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
                       <td className="p-6 text-center font-bold text-slate-400">
                         {((currentPage - 1) * itemsPerPage) + index + 1}
                       </td>
+                      {/* --- เพิ่มคอลัมน์ หัวข้อ / ห้อง ที่หายไป --- */}
+                      <td className="p-6">
+                        <div className="font-bold text-slate-800 text-base">{b.title}</div>
+                        <div className="text-sm font-medium text-indigo-600 mt-1">{room?.name || 'ไม่ระบุห้อง'}</div>
+                      </td>
+                      {/* ------------------------------------ */}
                       <td className="p-6">
                         <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
                         <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
@@ -1504,6 +1510,16 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
                         <td className="p-6 text-center font-bold text-slate-400">
                           {((currentPage - 1) * itemsPerPage) + index + 1}
                         </td>
+                        {/* --- เพิ่มคอลัมน์ เรื่อง / รถ ที่หายไป --- */}
+                        <td className="p-6">
+                           <div className="font-bold text-slate-800 text-base">{b.title}</div>
+                           <div className="text-sm font-medium text-slate-500 mt-1 flex items-center gap-1"><MapPin size={14} className="text-rose-400"/> {b.destination}</div>
+                        </td>
+                        <td className="p-6">
+                           <div className="font-bold text-teal-700 text-base">{car?.plate || 'ไม่ระบุรถ'}</div>
+                           <div className="text-xs font-medium text-slate-400 mt-1">{car?.type || ''}</div>
+                        </td>
+                        {/* --------------------------------- */}
                         <td className="p-6">
                           <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
                           <div className="text-sm font-medium text-slate-400 mt-1">ถึง {new Date(b.endTime).toLocaleString('th-TH')}</div>
@@ -1881,14 +1897,21 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
                       <td className="p-6 text-center font-bold text-slate-400">
                         {((currentPage - 1) * itemsPerPage) + index + 1}
                       </td>
+                      {/* --- ปรับแต่งคอลัมน์ รายการอาหาร และ วันเวลา/สถานที่ ให้แสดงผลครบ 5 คอลัมน์ --- */}
                       <td className="p-6">
-                        <div className="text-sm font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-lg inline-block mb-2">
-                           รับวันที่: {b.deliveryTime ? new Date(b.deliveryTime).toLocaleDateString('th-TH') : 'ไม่ระบุ'} ({b.timeSlot || 'ไม่ระบุ'})
-                        </div>
-                        <div className="font-bold text-slate-700 text-sm mb-1"><MapPin size={14} className="inline text-rose-400 mr-1"/> {b.location}</div>
-                        <div className="text-xs text-slate-500 font-medium">ชื่อ: {b.requesterName}</div>
-                        {b.note && <div className="text-xs text-amber-600 font-medium mt-1 bg-amber-50 p-1.5 rounded-lg inline-block">หมายเหตุ: {b.note}</div>}
+                         <div className="font-bold text-slate-800 text-sm">
+                            {parsedItems.map((item, idx) => (
+                               <div key={idx}>- {item.name} {b.cateringType === 'สั่งปกติ (A-la-carte)' && `x${item.qty}`}</div>
+                            ))}
+                         </div>
+                         <div className="text-xs font-bold text-amber-600 mt-2 bg-amber-50 px-2 py-1 rounded-lg inline-block">{b.cateringType || 'A-la-carte'}</div>
                       </td>
+                      <td className="p-6">
+                        <div className="text-sm font-bold text-slate-700 mb-1">รับ: {b.deliveryTime ? new Date(b.deliveryTime).toLocaleDateString('th-TH') : 'ไม่ระบุ'} ({b.timeSlot || ''})</div>
+                        <div className="font-medium text-slate-500 text-xs mb-1"><MapPin size={14} className="inline text-rose-400 mr-1"/> {b.location}</div>
+                        <div className="text-xs text-slate-400">โดย: {b.requesterName}</div>
+                      </td>
+                      {/* ---------------------------------------------------------------------- */}
                       <td className="p-6 text-center">
                         <div className="text-xl font-black text-amber-600">{b.totalPrice} ฿</div>
                         {b.cateringType !== 'สั่งปกติ (A-la-carte)' && <div className="text-xs text-slate-500 font-medium mt-1">สำหรับ {b.pax} ท่าน</div>}
@@ -1919,22 +1942,27 @@ const Approvals = ({ user, roomBookings, setRoomBookings, carBookings, setCarBoo
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
-  const allowedTabs = [];
-  if (user.permissions?.includes('all') || user.permissions?.includes('rooms')) allowedTabs.push('rooms');
-  if (user.permissions?.includes('all') || user.permissions?.includes('cars')) allowedTabs.push('cars');
-  if (user.permissions?.includes('all') || user.permissions?.includes('foods')) allowedTabs.push('foods');
+  // --- แก้ไขบั๊กการคำนวณ Tabs ใหม่ เพื่อไม่ให้รบกวน Pagination ---
+  const allowedTabs = useMemo(() => {
+    const tabs = [];
+    if (user.permissions?.includes('all') || user.permissions?.includes('rooms')) tabs.push('rooms');
+    if (user.permissions?.includes('all') || user.permissions?.includes('cars')) tabs.push('cars');
+    if (user.permissions?.includes('all') || user.permissions?.includes('foods')) tabs.push('foods');
+    return tabs;
+  }, [user.permissions]);
 
   useEffect(() => {
-    if (!allowedTabs.includes(tab) && allowedTabs.length > 0) {
+    if (!tab && allowedTabs.length > 0) {
       setTab(allowedTabs[0]);
+    } else if (tab && !allowedTabs.includes(tab)) {
+      setTab(allowedTabs[0] || '');
     }
-    // Reset page when tab changes
-    setCurrentPage(1);
-  }, [user, tab, allowedTabs]);
+  }, [tab, allowedTabs]);
   
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStatus, filterDate, sortOrder]);
+  }, [tab, filterStatus, filterDate, sortOrder]);
+  // ------------------------------------------------------
 
   const updateStatus = (list, setList, id, newStatus) => {
     setList(list.map(item => item.id === id ? { ...item, status: newStatus } : item));
