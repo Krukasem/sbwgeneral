@@ -195,16 +195,17 @@ const ScheduleCalendar = ({ bookings, items, itemKey, onEventClick, onDayClick }
                         {dayBookings.map(b => {
                            const item = items.find(itm => itm.id === b[itemKey]);
                            const isApproved = b.status === 'approved';
+                           const displayTitle = item ? (item.name || item.plate) : (b.status === 'pending' ? 'รอจัดสรรรถ' : 'ไม่ระบุ');
                            return (
                               <div key={b.id} 
                                 onClick={(e) => { e.stopPropagation(); onEventClick && onEventClick(b); }}
                                 className={`text-[10px] sm:text-xs p-2 rounded-xl border-l-4 truncate cursor-pointer transition-all shadow-sm hover:scale-[1.02]
                                   ${isApproved ? 'bg-emerald-50/80 text-emerald-700 border-emerald-500 border-t-transparent border-r-transparent border-b-transparent hover:bg-emerald-100' 
                                                : 'bg-amber-50/80 text-amber-700 border-amber-500 border-t-transparent border-r-transparent border-b-transparent hover:bg-amber-100'}`} 
-                                title={`[${isApproved ? 'อนุมัติแล้ว' : 'รออนุมัติ'}] ${b.title} - ${item?.name || item?.plate}`}
+                                title={`[${isApproved ? 'อนุมัติแล้ว' : 'รออนุมัติ'}] ${b.title} - ${displayTitle}`}
                               >
                                  <div className="font-bold">{new Date(b.startTime).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
-                                 <div className="truncate font-medium opacity-90 mt-0.5">{item?.name || item?.plate}</div>
+                                 <div className="truncate font-medium opacity-90 mt-0.5">{displayTitle}</div>
                               </div>
                            )
                         })}
@@ -1395,14 +1396,10 @@ const RoomBooking = ({ user, rooms, roomBookings, setRoomBookings }) => {
 
 const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
   const [view, setView] = useState('calendar'); 
-  const [selectedCar, setSelectedCar] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [formData, setFormData] = useState({ requesterName: user.name || '', requesterPhone: '', title: '', destination: '', passengers: 1, selfDrive: false, startTime: '', endTime: '', attachment: null });
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const [showResourceSelect, setShowResourceSelect] = useState(false);
-  const [selectedDateForBooking, setSelectedDateForBooking] = useState(null);
   
   // States for advanced filtering
   const [filterCar, setFilterCar] = useState('all');
@@ -1428,28 +1425,14 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
     }
   };
 
-  const checkAvailability = (carId, start, end) => {
-    const sTime = new Date(start).getTime();
-    const eTime = new Date(end).getTime();
-    return !carBookings.some(b => {
-      if (b.carId !== carId || b.status === 'rejected' || b.status === 'cancelled') return false;
-      const bStart = new Date(b.startTime).getTime();
-      const bEnd = new Date(b.endTime).getTime();
-      return (sTime < bEnd && eTime > bStart); 
-    });
-  };
-
   const handleBook = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     if (new Date(formData.startTime) >= new Date(formData.endTime)) {
       setErrorMsg('เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น'); return;
     }
-    if (!checkAvailability(selectedCar.id, formData.startTime, formData.endTime)) {
-      setErrorMsg('รถไม่ว่างในช่วงเวลาดังกล่าว (มีการจองซ้ำ)'); return;
-    }
     setIsSubmitting(true);
-    const newBooking = { id: 'cb' + Date.now(), carId: selectedCar.id, ...formData, status: 'pending', createdBy: user.id };
+    const newBooking = { id: 'cb' + Date.now(), carId: '', ...formData, status: 'pending', createdBy: user.id };
     setCarBookings([newBooking, ...carBookings]);
     await syncToGoogleSheet('addCarBooking', newBooking);
     setIsSubmitting(false);
@@ -1457,31 +1440,19 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
     setFormData({ requesterName: user.name || '', requesterPhone: '', title: '', destination: '', passengers: 1, selfDrive: false, startTime: '', endTime: '', attachment: null });
   };
 
-  const openBookForm = (car) => {
-    setSelectedCar(car); setView('book'); setErrorMsg('');
-  };
-
   const handleDayClick = (day) => {
-    setSelectedDateForBooking(day);
-    setShowResourceSelect(true);
-  };
-
-  const handleEventClick = (booking) => {
-    setSelectedBooking(booking);
-    setView('detail');
-  };
-
-  const handleSelectResourceForBooking = (car) => {
-    if (!selectedDateForBooking) return;
-    const dateString = selectedDateForBooking.toLocaleDateString('en-CA');
+    const dateString = day.toLocaleDateString('en-CA');
     setFormData({
       ...formData,
       startTime: `${dateString}T08:30`,
       endTime: `${dateString}T16:30`
     });
-    setSelectedCar(car);
-    setShowResourceSelect(false);
     setView('book');
+  };
+
+  const handleEventClick = (booking) => {
+    setSelectedBooking(booking);
+    setView('detail');
   };
 
   return (
@@ -1495,7 +1466,7 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
         ) : (
           <div className="flex bg-slate-200/60 p-1.5 rounded-2xl shadow-inner w-max">
             <button onClick={() => setView('calendar')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'calendar' ? 'bg-white shadow-sm text-teal-600 scale-100' : 'text-slate-500 hover:text-slate-800'}`}>ปฏิทิน</button>
-            <button onClick={() => setView('list')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'list' || view === 'book' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-500 hover:text-slate-800'}`}>ดูรถโรงเรียน</button>
+            <button onClick={() => {setView('book'); setFormData({...formData, startTime: '', endTime: ''});}} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'book' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-500 hover:text-slate-800'}`}>ขอจองรถ</button>
             <button onClick={() => setView('my_bookings')} className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${view === 'my_bookings' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-500 hover:text-slate-800'}`}>การจองทั้งหมด</button>
           </div>
         )}
@@ -1503,68 +1474,15 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
 
       {view === 'calendar' && <ScheduleCalendar bookings={carBookings} items={cars} itemKey="carId" onDayClick={handleDayClick} onEventClick={handleEventClick} />}
 
-      {showResourceSelect && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowResourceSelect(false)}>
-          <div className="bg-white rounded-[2rem] p-6 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-              <h3 className="text-xl font-black text-slate-800">เลือกรถโรงเรียนเพื่อจอง</h3>
-              <button onClick={() => setShowResourceSelect(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
-            </div>
-            <p className="text-sm text-teal-600 bg-teal-50 px-3 py-2 rounded-xl font-bold mb-4 flex items-center gap-2">
-               <CalendarDays size={16}/> สำหรับวันที่: {selectedDateForBooking?.toLocaleDateString('th-TH', { dateStyle: 'long' })}
-            </p>
-            <div className="space-y-3 max-h-96 overflow-y-auto pr-2 hide-scrollbar">
-              {cars.map(car => (
-                <button key={car.id} onClick={() => handleSelectResourceForBooking(car)} className="w-full text-left p-4 rounded-2xl border border-slate-200 hover:border-teal-400 hover:shadow-md hover:bg-teal-50/30 transition-all group">
-                  <div className="font-bold text-slate-800 group-hover:text-teal-700 flex justify-between items-center">
-                     {car.plate} ({car.type})
-                     <ChevronRight size={16} className="text-slate-300 group-hover:text-teal-500" />
-                  </div>
-                  <div className="text-xs font-medium text-slate-500 mt-1">ความจุ {car.capacity} ที่นั่ง | คนขับ: {car.driver}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {view === 'list' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-          {cars.map(car => (
-            <div key={car.id} className="bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden flex flex-col group hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300">
-              <div className="relative overflow-hidden h-56 bg-slate-100">
-                <img 
-                  src={car.image && car.image.includes('drive.google.com') ? `https://drive.google.com/thumbnail?id=${car.image.match(/\/d\/(.+?)\//)?.[1] || car.image.match(/id=(.+?)$/)?.[1]}&sz=w800` : car.image} 
-                  alt={car.plate} 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/600x400/f8fafc/64748b?text=Car+Image'; }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent"></div>
-                <h3 className="absolute bottom-5 left-6 right-6 text-2xl font-black text-white leading-tight drop-shadow-md">{car.plate} <span className="text-sm font-medium text-teal-200 bg-teal-900/50 px-2 py-1 rounded-lg ml-2">{car.type}</span></h3>
-              </div>
-              <div className="p-6 flex-1 flex flex-col">
-                <div className="space-y-4 text-sm font-medium text-slate-600 mb-8 flex-1 bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                  <div className="flex items-center gap-3 text-slate-700"><div className="p-2 bg-white rounded-xl shadow-sm text-teal-500"><Users size={18}/></div> ความจุ: <span className="font-bold text-lg">{car.capacity}</span> ที่นั่ง</div>
-                  <div className="flex items-start gap-3"><div className="p-2 bg-white rounded-xl shadow-sm text-teal-500 mt-1"><Car size={18}/></div> <span className="flex-1 text-slate-600 leading-relaxed pt-1">พนักงานขับรถ: {car.driver}</span></div>
-                </div>
-                <button onClick={() => openBookForm(car)} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-teal-600 hover:shadow-lg hover:shadow-teal-200 active:scale-95 transition-all duration-300">
-                  ทำรายการจองรถคันนี้
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {view === 'book' && selectedCar && (
+      {view === 'book' && (
         <div className="max-w-3xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
           <form onSubmit={handleBook} className="bg-white/90 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white">
             <div className="flex items-center justify-between mb-8 border-b border-slate-100 pb-6">
               <div>
-                 <h3 className="text-2xl font-black text-slate-800">จอง {selectedCar.plate}</h3>
-                 <p className="text-slate-500 font-medium mt-1">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อดำเนินการ</p>
+                 <h3 className="text-2xl font-black text-slate-800">แบบฟอร์มขอใช้รถโรงเรียน</h3>
+                 <p className="text-slate-500 font-medium mt-1">กรุณากรอกข้อมูลให้ครบถ้วน ผู้ดูแลระบบจะจัดสรรรถให้ภายหลัง</p>
               </div>
-              <button onClick={() => setView('list')} type="button" className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"><X size={20}/></button>
+              <button onClick={() => setView('calendar')} type="button" className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"><X size={20}/></button>
             </div>
             
             {errorMsg && <div className="mb-6 p-4 bg-rose-50 text-rose-600 text-sm font-bold rounded-2xl border border-rose-100 flex items-center gap-3 animate-bounce"><AlertCircle size={20}/> {errorMsg}</div>}
@@ -1611,8 +1529,8 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div className="space-y-2">
                     <label className="block text-sm font-bold text-slate-700 ml-1">จำนวนผู้โดยสาร (รวมผู้จอง)</label>
-                    <input required type="number" min="1" max={selectedCar.capacity} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-medium"
-                      value={formData.passengers} onChange={e => setFormData({...formData, passengers: e.target.value})} placeholder={`สูงสุด ${selectedCar.capacity} ท่าน`} />
+                    <input required type="number" min="1" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-medium"
+                      value={formData.passengers} onChange={e => setFormData({...formData, passengers: e.target.value})} placeholder="จำนวนท่าน" />
                  </div>
                  <div className="flex items-center mt-8">
                     <label className="flex items-center gap-3 cursor-pointer">
@@ -1641,7 +1559,7 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
                 <button type="submit" disabled={isSubmitting} className={`flex-1 bg-gradient-to-r from-teal-500 to-emerald-500 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-teal-200 hover:shadow-2xl active:scale-[0.98] transition-all ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}>
                   {isSubmitting ? 'กำลังส่งข้อมูล...' : 'ยืนยันการจอง'}
                 </button>
-                <button type="button" onClick={() => setView('list')} disabled={isSubmitting} className="px-8 py-4 bg-slate-100 text-slate-700 rounded-2xl font-bold text-lg hover:bg-slate-200 active:scale-[0.98] transition-all">ยกเลิก</button>
+                <button type="button" onClick={() => setView('calendar')} disabled={isSubmitting} className="px-8 py-4 bg-slate-100 text-slate-700 rounded-2xl font-bold text-lg hover:bg-slate-200 active:scale-[0.98] transition-all">ยกเลิก</button>
               </div>
             </div>
           </form>
@@ -1650,12 +1568,13 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
 
       {view === 'detail' && selectedBooking && (() => {
         const car = cars.find(r => r.id === selectedBooking.carId);
+        const displayCar = car ? car.plate : (selectedBooking.status === 'pending' ? 'รอจัดสรรรถ' : 'ไม่ระบุ');
         return (
           <div className="max-w-4xl mx-auto animate-in zoom-in-95 duration-300">
             <div className="bg-white/90 backdrop-blur-xl p-8 md:p-10 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white">
               <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-8 border-b border-slate-100 pb-8">
                 <div>
-                  <span className="px-3 py-1 bg-teal-50 text-teal-600 text-xs font-bold rounded-lg tracking-wider">รถโรงเรียน: {car?.plate || 'ไม่ระบุ'}</span>
+                  <span className={`px-3 py-1 text-xs font-bold rounded-lg tracking-wider ${car ? 'bg-teal-50 text-teal-600' : 'bg-amber-50 text-amber-600'}`}>รถโรงเรียน: {displayCar}</span>
                   <h3 className="text-3xl font-black text-slate-800 leading-tight mt-3">{selectedBooking.title}</h3>
                   <p className="text-slate-500 font-medium mt-1">ผู้ทำรายการจอง: {selectedBooking.requesterName}</p>
                 </div>
@@ -1702,7 +1621,7 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
                        {selectedBooking.selfDrive ? (
                           <div className="font-bold text-amber-600 flex items-center gap-2"><CheckCircle size={18}/> ผู้จองขับรถเอง</div>
                        ) : (
-                          <div className="font-bold text-slate-700">พนักงานขับรถ: {car?.driver || 'ไม่ระบุ'}</div>
+                          <div className="font-bold text-slate-700">พนักงานขับรถ: {car?.driver || (selectedBooking.status === 'pending' ? 'รอผู้ดูแลระบบจัดสรร' : 'ไม่ระบุ')}</div>
                        )}
                     </div>
                   </div>
@@ -1727,7 +1646,7 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
           .filter(b => {
             const matchDate = !filterDate || new Date(b.startTime).toLocaleDateString('en-CA') === filterDate;
             const matchStatus = filterStatus === 'all' || b.status === filterStatus;
-            const matchCar = filterCar === 'all' || b.carId === filterCar;
+            const matchCar = filterCar === 'all' || (filterCar === 'pending' ? !b.carId : b.carId === filterCar);
             return matchDate && matchStatus && matchCar;
           })
           .sort((a, b) => {
@@ -1753,6 +1672,7 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
                  className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 font-bold text-sm text-slate-700"
                >
                  <option value="all">รถทุกคัน</option>
+                 <option value="pending">รอจัดสรรรถ</option>
                  {cars.map(c => <option key={c.id} value={c.id}>{c.plate} ({c.type})</option>)}
                </select>
                <select 
@@ -1801,6 +1721,7 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
                 <tbody className="divide-y divide-slate-100/80">
                   {paginatedBookings.map((b, index) => {
                     const car = cars.find(c => c.id === b.carId);
+                    const displayCar = car ? car.plate : (b.status === 'pending' ? 'รอจัดสรรรถ' : 'ไม่ระบุ');
                     return (
                     <tr key={b.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => handleEventClick(b)}>
                       <td className="p-6 text-center font-bold text-slate-400">
@@ -1808,7 +1729,7 @@ const CarBooking = ({ user, cars, carBookings, setCarBookings }) => {
                       </td>
                       <td className="p-6">
                         <div className="font-bold text-slate-800 text-base">{b.title}</div>
-                        <div className="text-sm font-medium text-teal-600 mt-1">{car?.plate || 'ไม่ระบุรถ'} <span className="text-slate-400">({b.destination})</span></div>
+                        <div className={`text-sm font-medium mt-1 ${car ? 'text-teal-600' : 'text-amber-500'}`}>{displayCar} <span className="text-slate-400">({b.destination})</span></div>
                       </td>
                       <td className="p-6">
                         <div className="text-base font-bold text-slate-700">{new Date(b.startTime).toLocaleString('th-TH')}</div>
@@ -2224,6 +2145,8 @@ const FoodOrdering = ({ user, foods, foodCategories, foodOrders, setFoodOrders }
 const Approvals = ({ user, roomBookings, setRoomBookings, carBookings, setCarBookings, foodOrders, setFoodOrders, rooms, cars }) => {
   const [tab, setTab] = useState(''); 
   
+  const [carAssignModal, setCarAssignModal] = useState({ show: false, booking: null, selectedCarId: '' });
+
   // States สำหรับระบบค้นหาและกรอง
   const [filterStatus, setFilterStatus] = useState('pending');
   const [filterDate, setFilterDate] = useState('');
@@ -2463,7 +2386,7 @@ const Approvals = ({ user, roomBookings, setRoomBookings, carBookings, setCarBoo
                             <td className="p-6 text-center">
                               {b.status === 'pending' ? (
                                 <div className="flex justify-center gap-3">
-                                  <button onClick={() => updateStatus(carBookings, setCarBookings, b.id, 'approved')} className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><Check size={18}/> อนุมัติ</button>
+                                  <button onClick={() => setCarAssignModal({ show: true, booking: b, selectedCarId: cars[0]?.id || '' })} className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><Check size={18}/> อนุมัติ</button>
                                   <button onClick={() => updateStatus(carBookings, setCarBookings, b.id, 'rejected')} className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center gap-2"><X size={18}/> ไม่อนุมัติ</button>
                                 </div>
                               ) : (
@@ -2569,6 +2492,38 @@ const Approvals = ({ user, roomBookings, setRoomBookings, carBookings, setCarBoo
           </table>
         </div>
       </div>
+
+      {carAssignModal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] p-6 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+              <h3 className="text-xl font-black text-slate-800">จัดสรรรถโรงเรียน</h3>
+              <button onClick={() => setCarAssignModal({ show: false, booking: null, selectedCarId: '' })} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+            </div>
+            <p className="text-sm text-slate-600 mb-4">อ้างอิง: <span className="font-bold text-slate-800">{carAssignModal.booking?.title}</span></p>
+            <div className="space-y-4">
+              <label className="block text-sm font-bold text-slate-700">เลือกรถที่ต้องการจัดสรร</label>
+              <select
+                  value={carAssignModal.selectedCarId}
+                  onChange={e => setCarAssignModal({...carAssignModal, selectedCarId: e.target.value})}
+                  className="w-full p-4 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-teal-500/20 outline-none transition-all font-bold text-slate-700"
+              >
+                  {cars.map(c => <option key={c.id} value={c.id}>{c.plate} ({c.type}) - จุ {c.capacity} คน</option>)}
+              </select>
+              <div className="pt-4 flex gap-3">
+                  <button onClick={() => {
+                    const { booking, selectedCarId } = carAssignModal;
+                    if (!selectedCarId) return;
+                    setCarBookings(carBookings.map(b => b.id === booking.id ? { ...b, carId: selectedCarId, status: 'approved' } : b));
+                    syncToGoogleSheet('assignCarToBooking', { id: booking.id, carId: selectedCarId, status: 'approved' });
+                    setCarAssignModal({ show: false, booking: null, selectedCarId: '' });
+                  }} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold shadow-md hover:bg-emerald-600 active:scale-95 transition-all">ยืนยันจัดสรรรถและอนุมัติ</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
