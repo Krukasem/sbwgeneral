@@ -288,16 +288,21 @@ export default function App() {
     try {
       const res = await fetch(`${SCRIPT_URL}?action=getAll`);
       const data = await res.json();
+      
+      // ส่วนข้อมูลการจอง/แจ้งซ่อม (ถ้าว่างให้เป็นตารางเปล่าได้)
       if(data.tickets) setTickets(data.tickets.reverse());
       if(data.roomBookings) setRoomBookings(data.roomBookings.reverse());
       if(data.carBookings) setCarBookings(data.carBookings.reverse());
       if(data.foodOrders) setFoodOrders(data.foodOrders.reverse());
       
-      if(data.foodCategories) setFoodCategories(data.foodCategories);
-      if(data.foods) setFoods(data.foods);
-      if(data.rooms) setRooms(data.rooms);
-      if(data.cars) setCars(data.cars);
+      // ส่วนข้อมูลตั้งค่า (ป้องกันข้อมูลหาย ถ้าระบบดึงมาแล้วเจอว่าว่างเปล่า จะคงข้อมูลเดิมไว้)
+      if(data.categories && data.categories.length > 0) setCategories(data.categories);
+      if(data.rooms && data.rooms.length > 0) setRooms(data.rooms);
+      if(data.cars && data.cars.length > 0) setCars(data.cars);
+      if(data.foodCategories && data.foodCategories.length > 0) setFoodCategories(data.foodCategories);
+      if(data.foods && data.foods.length > 0) setFoods(data.foods);
       if(data.admins && data.admins.length > 0) setAdmins(data.admins);
+      
     } catch(err) {
       console.error("Fetch API error:", err);
     } finally {
@@ -2376,7 +2381,7 @@ const Approvals = ({ user, roomBookings, setRoomBookings, carBookings, setCarBoo
                               </div>
                             </td>
                             <td className="p-6 text-base font-bold text-teal-700">
-                               {car?.plate || 'ไม่พบข้อมูลรถ'}
+                               {car?.plate || (b.status === 'pending' ? 'รอจัดสรรรถ' : 'ไม่พบข้อมูลรถ')}
                                {b.selfDrive && <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">ขับเอง</span>}
                             </td>
                             <td className="p-6">
