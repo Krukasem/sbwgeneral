@@ -195,7 +195,8 @@ const ScheduleCalendar = ({ bookings, items, itemKey, onEventClick, onDayClick }
                         {dayBookings.map(b => {
                            const item = items.find(itm => itm.id === b[itemKey]);
                            const isApproved = b.status === 'approved';
-                           const displayTitle = item ? (item.name || item.plate) : (b.status === 'pending' ? 'รอจัดสรรรถ' : 'ไม่ระบุ');
+                           const isCarBooking = itemKey === 'carId';
+                           const displayTitle = item ? (item.name || item.plate) : (b.status === 'pending' ? (isCarBooking ? 'รอจัดสรรรถ' : 'รอตรวจสอบ') : 'ไม่ระบุ');
                            return (
                               <div key={b.id} 
                                 onClick={(e) => { e.stopPropagation(); onEventClick && onEventClick(b); }}
